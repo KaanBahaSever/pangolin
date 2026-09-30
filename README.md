@@ -101,6 +101,14 @@ go build -o bin/pangolin ./cmd/pangolin
 go build -ldflags "-H=windowsgui" -o bin/pangolin.exe ./cmd/pangolin
 ```
 
+The Windows executable gets its icon from `cmd/pangolin/rsrc_windows_amd64.syso`,
+which the Go linker includes automatically. After changing `assets/icon.ico`,
+regenerate it with:
+
+```bash
+go run github.com/akavel/rsrc@v0.10.2 -ico assets/icon.ico -arch amd64 -o cmd/pangolin/rsrc_windows_amd64.syso
+```
+
 Run the tests:
 
 ```bash

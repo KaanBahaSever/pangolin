@@ -9,6 +9,8 @@
 *.dylib
 *.app/
 *.syso
+# ...except the Windows icon resource, which the Go linker picks up by name
+!/cmd/pangolin/rsrc_windows_amd64.syso
 fyne-cross/
 
 # Go
