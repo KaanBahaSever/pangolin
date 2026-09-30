@@ -12,6 +12,7 @@ import (
 	"github.com/KaanBahaSever/pangolin/internal/crypto"
 	"github.com/KaanBahaSever/pangolin/internal/i18n"
 	"github.com/KaanBahaSever/pangolin/internal/vault"
+	"github.com/KaanBahaSever/pangolin/internal/version"
 )
 
 type choice struct {
@@ -75,7 +76,10 @@ func (a *App) showSettings() {
 		widget.NewFormItem(i18n.T("Clear clipboard"), clipboard),
 		widget.NewFormItem("", change),
 	)
-	d = dialog.NewCustom(i18n.T("Settings"), i18n.T("Close"), container.NewPadded(form), a.win)
+	about := widget.NewLabel("Pangolin " + version.Version)
+	about.Alignment = fyne.TextAlignCenter
+	about.Importance = widget.LowImportance
+	d = dialog.NewCustom(i18n.T("Settings"), i18n.T("Close"), container.NewPadded(container.NewVBox(form, about)), a.win)
 	d.Resize(fyne.NewSize(420, 0))
 	d.Show()
 }
