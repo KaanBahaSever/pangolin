@@ -1,0 +1,82 @@
+package i18n
+
+// tr maps every English source string to Turkish. A translation must use the
+// same format verbs, in the same order, as its key.
+var tr = map[string]string{
+	// Create and unlock
+	"Master password":        "Ana parola",
+	"Repeat master password": "Ana parolayı tekrar girin",
+	"Create vault":           "Kasayı oluştur",
+	"Unlock":                 "Kilidi aç",
+	"Choose a master password of at least %d characters.\nIt is never stored and cannot be recovered.\nIf you forget it, the vault is lost.": "En az %d karakterlik bir ana parola seçin.\nParola hiçbir yerde saklanmaz ve kurtarılamaz.\nUnutursanız kasaya bir daha erişemezsiniz.",
+	"Use at least %d characters.":                     "En az %d karakter kullanın.",
+	"The two passwords do not match.":                 "İki parola birbiriyle eşleşmiyor.",
+	"Creating vault…":                                 "Kasa oluşturuluyor…",
+	"Unlocking…":                                      "Kilit açılıyor…",
+	"Wrong master password, or the vault is damaged.": "Ana parola yanlış veya kasa hasarlı.",
+
+	// Vault
+	"Search":          "Ara",
+	"New":             "Yeni",
+	"Lock":            "Kilitle",
+	"Select an entry": "Bir kayıt seçin",
+	"Your vault is empty.\nAdd your first entry with New.":          "Kasanız boş.\nİlk kaydınızı Yeni ile ekleyin.",
+	"Password copied. The clipboard will be cleared in %d seconds.": "Parola kopyalandı. Pano %d saniye sonra temizlenecek.",
+	"Username copied.": "Kullanıcı adı kopyalandı.",
+	"URL copied.":      "Adres kopyalandı.",
+	"Username":         "Kullanıcı adı",
+	"Password":         "Parola",
+	"URL":              "Adres",
+	"Notes":            "Notlar",
+	"Hidden":           "Gizli",
+	"Updated %s":       "Güncellendi: %s",
+	"Edit":             "Düzenle",
+	"Delete":           "Sil",
+	"Delete entry":     "Kaydı sil",
+	"Delete “%s”? This cannot be undone.": "“%s” silinsin mi? Bu işlem geri alınamaz.",
+	"Entry deleted.": "Kayıt silindi.",
+
+	// Editor
+	"New entry":                              "Yeni kayıt",
+	"Edit entry":                             "Kaydı düzenle",
+	"e.g. GitHub":                            "örn. GitHub",
+	"Title":                                  "Başlık",
+	"Generate":                               "Üret",
+	"An entry needs a title.":                "Kaydın bir başlığı olmalı.",
+	"Saved.":                                 "Kaydedildi.",
+	"Cancel":                                 "İptal",
+	"Save":                                   "Kaydet",
+	"Generate password":                      "Parola üret",
+	"%d characters":                          "%d karakter",
+	"Symbols":                                "Semboller",
+	"Use":                                    "Kullan",
+	"Select at least one kind of character.": "En az bir karakter türü seçin.",
+
+	// Settings
+	"Settings":                              "Ayarlar",
+	"Close":                                 "Kapat",
+	"Language":                              "Dil",
+	"Lock when idle":                        "Boştayken kilitle",
+	"Clear clipboard":                       "Panoyu temizle",
+	"After 1 minute":                        "1 dakika sonra",
+	"After 5 minutes":                       "5 dakika sonra",
+	"After 15 minutes":                      "15 dakika sonra",
+	"After 30 minutes":                      "30 dakika sonra",
+	"Never":                                 "Hiçbir zaman",
+	"After 10 seconds":                      "10 saniye sonra",
+	"After 20 seconds":                      "20 saniye sonra",
+	"After 30 seconds":                      "30 saniye sonra",
+	"After 60 seconds":                      "60 saniye sonra",
+	"Change master password…":               "Ana parolayı değiştir…",
+	"Change master password":                "Ana parolayı değiştir",
+	"Change":                                "Değiştir",
+	"Current":                               "Mevcut",
+	"Repeat new":                            "Yeniyi tekrarla",
+	"The two new passwords do not match.":   "İki yeni parola birbiriyle eşleşmiyor.",
+	"The current password is not correct.":  "Mevcut parola doğru değil.",
+	"The master password has been changed.": "Ana parola değiştirildi.",
+
+	// Dialogs
+	"OK":    "Tamam",
+	"Error": "Hata",
+}
