@@ -24,6 +24,7 @@ const (
 	prefAutoLockMinutes  = "autolock_minutes"
 	prefClipboardSeconds = "clipboard_seconds"
 	prefLanguage         = "language"
+	prefTheme            = "theme"
 
 	defaultAutoLockMinutes  = 5
 	defaultClipboardSeconds = 20
@@ -63,7 +64,7 @@ func Run(dir string) {
 // when a new vault is created.
 func New(fa fyne.App, dir string, params crypto.KDFParams) *App {
 	a := &App{fyne: fa, dir: dir, params: params}
-	fa.Settings().SetTheme(newTheme())
+	fa.Settings().SetTheme(newTheme(fa.Preferences().StringWithFallback(prefTheme, themeSystem)))
 	fa.SetIcon(logo)
 
 	a.win = fa.NewWindow("Pangolin")
@@ -106,6 +107,13 @@ func (a *App) setLanguage(l i18n.Lang) {
 	}
 	a.view = newVaultView(a)
 	a.win.SetContent(a.view.content)
+}
+
+// setTheme stores the theme mode and applies it at once.
+func (a *App) setTheme(mode string) {
+	a.touch()
+	a.fyne.Preferences().SetString(prefTheme, mode)
+	a.fyne.Settings().SetTheme(newTheme(mode))
 }
 
 // closeDialogs removes everything layered above the window content.

@@ -267,7 +267,7 @@ password-hashing function in the system is Argon2id.
 The directory is created with mode `0700` and files with `0600`. The location
 can be overridden with `PANGOLIN_HOME`.
 
-The three preferences (language, auto-lock delay, clipboard delay) are not
+The preferences (language, theme, auto-lock delay, clipboard delay) are not
 secret and live in the toolkit's ordinary per-user preferences file, outside
 the vault, so they can be read before unlocking.
 
@@ -379,12 +379,14 @@ the file was at fault.
   is selected.
 - The editor has a built-in generator (length and character classes).
 - Delete asks for confirmation. Nothing else does.
-- Settings: language, auto-lock delay, clipboard delay, change master password.
+- Settings: language, theme, auto-lock delay, clipboard delay, change master
+  password.
 - English and Turkish. The first run follows the system language; the choice
   can be changed on the first screen or in the settings and is remembered.
   Search is case-insensitive in both, including the Turkish dotted and
   dotless I.
-- Dark theme by default, following the legacy plan's one good visual decision.
+- Light and dark themes in the logo's colours. The system setting is followed
+  unless the user picks one.
 
 There is no launcher screen, no secondary windows and no "save" step.
 

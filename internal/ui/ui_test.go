@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"image/color"
 	"testing"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/theme"
 
 	"github.com/KaanBahaSever/pangolin/internal/crypto"
 	"github.com/KaanBahaSever/pangolin/internal/i18n"
@@ -104,6 +106,23 @@ func TestMainFlow(t *testing.T) {
 	if len(vv.items) != 1 {
 		t.Fatal("search did not match the username")
 	}
+
+	// The theme follows the system unless one is chosen, and is remembered.
+	background := func(system fyne.ThemeVariant) color.Color {
+		return fa.Settings().Theme().Color(theme.ColorNameBackground, system)
+	}
+	if background(theme.VariantLight) == background(theme.VariantDark) {
+		t.Fatal("the system theme is not followed")
+	}
+	a.setTheme(themeLight)
+	if background(theme.VariantDark) != color.Color(lightPalette.background) {
+		t.Fatal("the light theme was not forced")
+	}
+	a.setTheme(themeDark)
+	if background(theme.VariantLight) != color.Color(darkPalette.background) || fa.Preferences().String(prefTheme) != themeDark {
+		t.Fatal("the dark theme was not forced and saved")
+	}
+	a.setTheme(themeSystem)
 
 	// Switching language while unlocked rebuilds the screen and keeps the data.
 	a.setLanguage(i18n.Turkish)

@@ -70,6 +70,7 @@ func (a *App) showSettings() {
 	})
 	form := widget.NewForm(
 		widget.NewFormItem(i18n.T("Language"), a.languageSelect()),
+		widget.NewFormItem(i18n.T("Theme"), a.themeSelect()),
 		widget.NewFormItem(i18n.T("Lock when idle"), autoLock),
 		widget.NewFormItem(i18n.T("Clear clipboard"), clipboard),
 		widget.NewFormItem("", change),
@@ -159,6 +160,27 @@ func (a *App) languageSelect() *widget.Select {
 		for _, l := range i18n.Languages {
 			if l.Name() == name && l != i18n.Current() {
 				a.setLanguage(l)
+			}
+		}
+	}
+	return s
+}
+
+// themeSelect builds the drop-down for the light, dark or system theme.
+func (a *App) themeSelect() *widget.Select {
+	modes := []string{themeSystem, themeLight, themeDark}
+	labels := []string{i18n.T("Same as system"), i18n.T("Light"), i18n.T("Dark")}
+	s := widget.NewSelect(labels, nil)
+	current := a.fyne.Preferences().StringWithFallback(prefTheme, themeSystem)
+	for i, mode := range modes {
+		if mode == current {
+			s.Selected = labels[i]
+		}
+	}
+	s.OnChanged = func(label string) {
+		for i := range labels {
+			if labels[i] == label {
+				a.setTheme(modes[i])
 			}
 		}
 	}
