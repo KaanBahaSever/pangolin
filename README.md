@@ -9,6 +9,14 @@
 </p>
 
 <p align="center">
+  <a href="https://kaanbahasever.github.io/pangolin/"><b>Website</b></a> ·
+  <a href="https://github.com/KaanBahaSever/pangolin/releases/latest"><b>Download</b></a> ·
+  <a href="architecture.md"><b>Architecture</b></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/KaanBahaSever/pangolin/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/KaanBahaSever/pangolin/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/KaanBahaSever/pangolin/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/KaanBahaSever/pangolin?color=E8A23E"></a>
   <img alt="Go 1.26+" src="https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white">
   <img alt="Platforms: Windows, macOS, Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-141A2E">
   <img alt="Key derivation: Argon2id" src="https://img.shields.io/badge/KDF-Argon2id-E8A23E">
@@ -26,7 +34,10 @@ network connection. One master password unlocks the vault, and it is never
 stored anywhere.
 
 <p align="center">
-  <img src="docs/screenshot.png" width="720" alt="The Pangolin window: a searchable list of entries on the left and one entry on the right with its password masked">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshot-light.png">
+    <img src="docs/screenshot-dark.png" width="720" alt="The Pangolin window: a searchable list of entries on the left and one entry on the right with its password masked">
+  </picture>
 </p>
 
 > [!WARNING]
@@ -44,9 +55,22 @@ stored anywhere.
 - **Clipboard clears itself** a few seconds after you copy a password.
 - **Password generator** with length and character-class options.
 - **English and Turkish** interface, switchable at any time.
+- **Light and dark** themes; follows the system by default.
 - **Nothing to lose on a crash.** Every change is written immediately.
 
-## Install and run
+## Download
+
+Ready-made builds for Windows, macOS (Apple Silicon) and Linux are on the
+[website](https://kaanbahasever.github.io/pangolin/#download) and the
+[releases page](https://github.com/KaanBahaSever/pangolin/releases/latest),
+with SHA-256 checksums. They are not code-signed yet, so Windows SmartScreen
+and macOS Gatekeeper warn on first launch; on macOS run
+`xattr -d com.apple.quarantine pangolin` after unpacking.
+
+A release is published by pushing a version tag, for example
+`git tag v0.2.0 && git push origin v0.2.0`.
+
+## Build from source
 
 You need [Go](https://go.dev/dl/) 1.26 or newer and a C compiler, because
 the GUI toolkit and SQLCipher are built with cgo.
