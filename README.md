@@ -60,15 +60,21 @@ stored anywhere.
 
 ## Download
 
-Ready-made builds for Windows, macOS (Apple Silicon) and Linux are on the
-[website](https://kaanbahasever.github.io/pangolin/#download) and the
-[releases page](https://github.com/KaanBahaSever/pangolin/releases/latest),
-with SHA-256 checksums. They are not code-signed yet, so Windows SmartScreen
-and macOS Gatekeeper warn on first launch; on macOS run
-`xattr -d com.apple.quarantine pangolin` after unpacking.
+Get the latest version from the [website](https://kaanbahasever.github.io/pangolin/#download)
+or the [releases page](https://github.com/KaanBahaSever/pangolin/releases/latest).
 
-A release is published by pushing a version tag, for example
-`git tag v0.2.0 && git push origin v0.2.0`.
+| Platform | Package | Install |
+|---|---|---|
+| Windows 10 / 11, 64-bit | `pangolin-windows-amd64.zip` | Unzip anywhere and run `Pangolin.exe` |
+| macOS 11+, Apple Silicon and Intel | `pangolin-macos-universal.dmg` | Open it and drag Pangolin to Applications |
+| Debian, Ubuntu, Mint | `pangolin-linux-amd64.deb` (or `-arm64`) | `sudo apt install ./pangolin-linux-amd64.deb` |
+| Other Linux | `pangolin-linux-amd64.tar.gz` (or `-arm64`) | Unpack and run `./install.sh`; no root needed |
+
+Every release comes with `SHA256SUMS.txt`.
+
+The builds are not code-signed yet, so Windows SmartScreen and macOS
+Gatekeeper warn the first time. On macOS, if Pangolin refuses to open, allow
+it under System Settings → Privacy & Security → Open Anyway.
 
 ## Build from source
 
@@ -99,6 +105,20 @@ go build -o bin/pangolin ./cmd/pangolin
 
 # Windows (no console window)
 go build -ldflags "-H=windowsgui" -o bin/pangolin.exe ./cmd/pangolin
+```
+
+To build the release package for the platform you are on (a `.zip` on
+Windows, a universal `.dmg` on macOS, a `.deb` and `.tar.gz` on Linux):
+
+```bash
+bash packaging/build.sh 1.2.3
+```
+
+A release is published by pushing a version tag; GitHub Actions then tests
+and packages every platform:
+
+```bash
+git tag v1.2.3 && git push origin v1.2.3
 ```
 
 The Windows executable gets its icon from `cmd/pangolin/rsrc_windows_amd64.syso`,
@@ -168,6 +188,7 @@ internal/generator/   password generator
 internal/session/     idle auto-lock, clipboard guard
 internal/i18n/        English and Turkish
 internal/ui/          screens and theme
+packaging/            release packaging for each platform
 ```
 
 ## Threat model
