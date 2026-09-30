@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pangolin — a password keeper that curls up around your secrets</title>
+<meta name="description" content="Pangolin is a free, open-source, local-first password keeper for Windows, macOS and Linux. No account, no server, no network.">
+<meta property="og:title" content="Pangolin">
+<meta property="og:description" content="A local-first password keeper that curls up around your secrets.">
+<meta property="og:image" content="https://kaanbahasever.github.io/pangolin/screenshot-dark.png">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<style>
+  /* Dark is the default; light applies when the system asks for it or the
+     visitor picks it with the toggle. */
+  :root {
+    color-scheme: dark;
+    --bg: #141A2E;
+    --surface: #1E2640;
+    --raised: #2A3352;
+    --text: #FFF1D6;
+    --muted: #A3ACC6;
+    --link: #F6BD60;
+    --shadow: rgba(0, 0, 0, .45);
+    --accent: #E8A23E;
+    --on-accent: #141A2E;
+    --blush: #F7A9A0;
+    --radius: 22px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --bg: #FBF6EC;
+      --surface: #FFFFFF;
+      --raised: #EEE4D0;
+      --text: #141A2E;
+      --muted: #5F6884;
+      --link: #9A5A08;
+      --shadow: rgba(20, 26, 46, .16);
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #FBF6EC;
+    --surface: #FFFFFF;
+    --raised: #EEE4D0;
+    --text: #141A2E;
+    --muted: #5F6884;
+    --link: #9A5A08;
+    --shadow: rgba(20, 26, 46, .16);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--link); }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+
+  /* Top bar */
+  .top { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; }
+  .top a { text-decoration: none; font-weight: 600; font-size: 16px; }
+  .lang { display: inline-flex; background: var(--surface); border-radius: 999px; padding: 4px; }
+  .lang button {
+    font: inherit; font-size: 14px; font-weight: 700; color: var(--muted);
+    background: none; border: 0; border-radius: 999px; padding: 5px 14px; cursor: pointer;
+  }
+  .controls { display: flex; gap: 8px; align-items: center; }
+  .theme {
+    font: inherit; font-size: 17px; line-height: 1; cursor: pointer;
+    background: var(--surface); color: var(--text); border: 0; border-radius: 999px;
+    width: 38px; height: 38px;
+  }
+  .lang button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+
+  /* Hero */
+  .hero { text-align: center; padding: 28px 0 56px; }
+  .logo { width: 176px; height: 176px; animation: bob 4s ease-in-out infinite; }
+  .logo:hover { animation: wiggle .6s ease-in-out; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
+  h1 { font-size: clamp(44px, 9vw, 68px); line-height: 1.05; margin: 12px 0 10px; letter-spacing: -1px; }
+  .tagline { font-size: clamp(19px, 3.2vw, 23px); color: var(--muted); max-width: 560px; margin: 0 auto 30px; }
+  .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; text-decoration: none; font-weight: 800; font-size: 18px;
+    padding: 14px 28px; border-radius: 999px; transition: transform .15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--accent); color: var(--on-accent); }
+  .btn.ghost { background: var(--raised); color: var(--text); }
+  .small { font-size: 15px; color: var(--muted); margin-top: 16px; }
+
+  /* Screenshot */
+  .shot { display: block; width: 100%; height: auto; border-radius: var(--radius); border: 2px solid var(--raised); box-shadow: 0 24px 60px var(--shadow); }
+  .shot.light { display: none; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .shot.dark { display: none; }
+    :root:not([data-theme="dark"]) .shot.light { display: block; }
+  }
+  :root[data-theme="light"] .shot.dark { display: none; }
+  :root[data-theme="light"] .shot.light { display: block; }
+
+  /* Sections */
+  section { padding: 56px 0 0; }
+  h2 { font-size: clamp(27px, 4.5vw, 34px); text-align: center; margin: 0 0 28px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .card { background: var(--surface); border-radius: var(--radius); padding: 24px; }
+  .card h3 { margin: 10px 0 6px; font-size: 20px; }
+  .card p { margin: 0; color: var(--muted); font-size: 16.5px; }
+  .emoji { font-size: 30px; line-height: 1; }
+
+  /* How it is protected */
+  .steps { list-style: none; margin: 0 auto; padding: 0; max-width: 640px; counter-reset: step; }
+  .steps li { position: relative; padding: 0 0 22px 56px; color: var(--muted); font-size: 17px; }
+  .steps li strong { color: var(--text); display: block; font-size: 19px; }
+  .steps li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 0; top: 2px; width: 38px; height: 38px; border-radius: 50%;
+    background: var(--accent); color: var(--on-accent); font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .center { text-align: center; }
+
+  /* Downloads */
+  .dl { text-align: center; border: 2px solid transparent; }
+  .dl.mine { border-color: var(--accent); }
+  .dl .btn { margin-top: 14px; font-size: 16px; padding: 11px 22px; }
+  .dl .os { font-size: 22px; font-weight: 800; margin: 8px 0 0; }
+  .dl .arch { color: var(--muted); font-size: 15px; margin: 0; }
+  .notes { max-width: 680px; margin: 24px auto 0; color: var(--muted); font-size: 15.5px; }
+  .notes li { margin-bottom: 6px; }
+  code { background: var(--raised); color: var(--text); padding: 2px 7px; border-radius: 7px; font-size: .88em; word-break: break-word; }
+
+  .honest { background: var(--surface); border-left: 6px solid var(--blush); border-radius: var(--radius); padding: 22px 24px; max-width: 720px; margin: 0 auto; }
+  .honest p { margin: 0 0 8px; color: var(--muted); font-size: 16.5px; }
+  .honest p:last-child { margin: 0; }
+  .honest strong { color: var(--text); }
+
+  footer { text-align: center; color: var(--muted); font-size: 15px; padding: 64px 0 40px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo, .logo:hover { animation: none; }
+    .btn { transition: none; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <a href="https://github.com/KaanBahaSever/pangolin">GitHub ↗</a>
+    <div class="controls">
+      <button type="button" class="theme" id="theme" aria-label="Switch between light and dark theme">🌙</button>
+      <div class="lang" role="group" aria-label="Language / Dil">
+        <button type="button" data-lang="en" aria-pressed="true">English</button>
+        <button type="button" data-lang="tr" aria-pressed="false">Türkçe</button>
+      </div>
+    </div>
+  </div>
+
+  <header class="hero">
+    <img class="logo" src="logo.svg" alt="" width="176" height="176">
+    <h1>Pangolin</h1>
+    <p class="tagline" data-i18n="tagline">A password keeper that curls up around your secrets.</p>
+    <div class="actions">
+      <a class="btn primary" id="main-download" href="#download" data-i18n="download">Download</a>
+      <a class="btn ghost" href="https://github.com/KaanBahaSever/pangolin" data-i18n="source">Source code</a>
+    </div>
+    <p class="small" data-i18n="free">Free and open source. No account, no server, no network.</p>
+  </header>
+
+  <img class="shot dark" src="screenshot-dark.png" width="900" height="580"
+       alt="The Pangolin window: a searchable list of entries on the left, and one entry on the right with its password hidden">
+  <img class="shot light" src="screenshot-light.png" width="900" height="580"
+       alt="The Pangolin window: a searchable list of entries on the left, and one entry on the right with its password hidden">
+
+  <section>
+    <h2 data-i18n="why">Small, calm and yours</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="emoji" aria-hidden="true">🏡</div>
+        <h3 data-i18n="f1t">Stays at home</h3>
+        <p data-i18n="f1d">Your vault is a folder on your own computer. Pangolin never connects to the internet.</p>
+      </div>
+      <div class="card">
+        <div class="emoji" aria-hidden="true">🛡️</div>
+        <h3 data-i18n="f2t">Armoured twice</h3>
+        <p data-i18n="f2d">The whole database is encrypted, and every password is sealed again on its own.</p>
+      </div>
+      <div class="card">
+        <div class="emoji" aria-hidden="true">😴</div>
+        <h3 data-i18n="f3t">Curls up by itself</h3>
+        <p data-i18n="f3d">Walk away and it locks. Copy a password and the clipboard is cleared a few seconds later.</p>
+      </div>
+      <div class="card">
+        <div class="emoji" aria-hidden="true">🔎</div>
+        <h3 data-i18n="f4t">One quiet window</h3>
+        <p data-i18n="f4d">Type to search, click to copy. No pop-ups and no save button: every change is stored at once.</p>
+      </div>
+      <div class="card">
+        <div class="emoji" aria-hidden="true">🎲</div>
+        <h3 data-i18n="f5t">Makes strong passwords</h3>
+        <p data-i18n="f5d">A built-in generator, with the length and kinds of characters you choose.</p>
+      </div>
+      <div class="card">
+        <div class="emoji" aria-hidden="true">💬</div>
+        <h3 data-i18n="f6t">English and Turkish</h3>
+        <p data-i18n="f6d">Switch the language whenever you like, even before you unlock.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="how">How your secrets are kept</h2>
+    <ol class="steps">
+      <li><strong data-i18n="s1t">One master password</strong><span data-i18n="s1d">It is stretched with Argon2id, which makes every guess slow and memory-hungry. It is never stored.</span></li>
+      <li><strong data-i18n="s2t">A key only you can unwrap</strong><span data-i18n="s2d">The password unwraps a random master key. Nothing else can.</span></li>
+      <li><strong data-i18n="s3t">Two layers of armour</strong><span data-i18n="s3d">SQLCipher encrypts the whole database; XChaCha20-Poly1305 seals each password and note.</span></li>
+      <li><strong data-i18n="s4t">Forgotten on lock</strong><span data-i18n="s4d">When Pangolin locks, the keys are wiped from memory.</span></li>
+    </ol>
+    <p class="center"><a href="https://github.com/KaanBahaSever/pangolin/blob/main/architecture.md" data-i18n="arch">Read the full architecture and threat model</a></p>
+  </section>
+
+  <section id="download">
+    <h2 data-i18n="get">Download</h2>
+    <div class="grid">
+      <div class="card dl" data-os="windows">
+        <div class="emoji" aria-hidden="true">🪟</div>
+        <p class="os">Windows</p>
+        <p class="arch">64-bit · .zip</p>
+        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-windows-amd64.zip" data-i18n="download">Download</a>
+      </div>
+      <div class="card dl" data-os="macos">
+        <div class="emoji" aria-hidden="true">🍎</div>
+        <p class="os">macOS</p>
+        <p class="arch">Apple Silicon · .tar.gz</p>
+        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-macos-arm64.tar.gz" data-i18n="download">Download</a>
+      </div>
+      <div class="card dl" data-os="linux">
+        <div class="emoji" aria-hidden="true">🐧</div>
+        <p class="os">Linux</p>
+        <p class="arch">x86-64 · .tar.gz</p>
+        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-linux-amd64.tar.gz" data-i18n="download">Download</a>
+      </div>
+    </div>
+    <ul class="notes">
+      <li data-i18n="n1">The builds are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn the first time you open one.</li>
+      <li><span data-i18n="n2">On macOS, after unpacking, run</span> <code>xattr -d com.apple.quarantine pangolin</code></li>
+      <li><span data-i18n="n3">Each release lists SHA-256 checksums.</span> <a href="https://github.com/KaanBahaSever/pangolin/releases" data-i18n="all">All releases and checksums</a></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2 data-i18n="honest">Two honest things</h2>
+    <div class="honest">
+      <p><strong data-i18n="h1t">There is no password recovery.</strong> <span data-i18n="h1d">If you forget the master password, nobody can open the vault, including us.</span></p>
+      <p><strong data-i18n="h2t">Pangolin is new.</strong> <span data-i18n="h2d">It uses standard, well-reviewed cryptography, but it has not had an independent security audit yet. Keep a backup of anything you cannot afford to lose.</span></p>
+    </div>
+  </section>
+
+  <footer>
+    <span data-i18n="foot">MIT licensed. Made with care for a very shy animal.</span><br>
+    <a href="https://github.com/KaanBahaSever/pangolin">github.com/KaanBahaSever/pangolin</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var tr = {
+    tagline: "Sırlarınızın etrafında kıvrılıp yatan bir parola kasası.",
+    download: "İndir",
+    source: "Kaynak kodu",
+    free: "Ücretsiz ve açık kaynak. Hesap yok, sunucu yok, internet bağlantısı yok.",
+    why: "Küçük, sakin ve sizin",
+    f1t: "Evden çıkmaz",
+    f1d: "Kasanız kendi bilgisayarınızdaki bir klasördür. Pangolin internete hiç bağlanmaz.",
+    f2t: "Çift kat zırh",
+    f2d: "Veritabanının tamamı şifrelidir; her parola ayrıca tek tek mühürlenir.",
+    f3t: "Kendi kendine kıvrılır",
+    f3d: "Başından kalkarsanız kilitlenir. Bir parola kopyalarsanız pano birkaç saniye sonra temizlenir.",
+    f4t: "Tek, sessiz bir pencere",
+    f4d: "Yazarak arayın, tıklayarak kopyalayın. Açılır pencere ve kaydet düğmesi yok: her değişiklik anında saklanır.",
+    f5t: "Güçlü parolalar üretir",
+    f5d: "Uzunluğunu ve karakter türlerini sizin seçtiğiniz yerleşik bir üretici.",
+    f6t: "Türkçe ve İngilizce",
+    f6d: "Dili istediğiniz an değiştirin, kilidi açmadan önce bile.",
+    how: "Sırlarınız nasıl korunuyor",
+    s1t: "Tek bir ana parola",
+    s1d: "Argon2id ile güçlendirilir; bu, her tahmini yavaş ve bellek açısından pahalı kılar. Hiçbir yerde saklanmaz.",
+    s2t: "Yalnızca sizin açabileceğiniz bir anahtar",
+    s2d: "Parola, rastgele üretilmiş ana anahtarın sargısını açar. Başka hiçbir şey açamaz.",
+    s3t: "İki kat zırh",
+    s3d: "SQLCipher veritabanının tamamını şifreler; XChaCha20-Poly1305 her parolayı ve notu ayrıca mühürler.",
+    s4t: "Kilitlenince unutulur",
+    s4d: "Pangolin kilitlendiğinde anahtarlar bellekten silinir.",
+    arch: "Mimarinin ve tehdit modelinin tamamını okuyun",
+    get: "İndir",
+    n1: "Derlemeler henüz kod imzalı değil; bu yüzden ilk açılışta Windows SmartScreen ve macOS Gatekeeper uyarı gösterir.",
+    n2: "macOS'ta paketi açtıktan sonra şunu çalıştırın:",
+    n3: "Her sürümde SHA-256 sağlama toplamları yer alır.",
+    all: "Tüm sürümler ve sağlama toplamları",
+    honest: "İki dürüst not",
+    h1t: "Parola kurtarma yoktur.",
+    h1d: "Ana parolayı unutursanız kasayı kimse açamaz; biz de açamayız.",
+    h2t: "Pangolin yeni bir uygulama.",
+    h2d: "Standart ve iyi incelenmiş kriptografi kullanır, ancak henüz bağımsız bir güvenlik denetiminden geçmedi. Kaybetmeyi göze alamayacağınız her şeyin yedeğini tutun.",
+    foot: "MIT lisanslı. Çok utangaç bir hayvan için özenle yapıldı."
+  };
+  var osNames = { windows: "Windows", macos: "macOS", linux: "Linux" };
+  var forOS = { en: "Download for ", tr: " için indir" };
+
+  var nodes = document.querySelectorAll("[data-i18n]");
+  var en = {};
+  nodes.forEach(function (n) { en[n.dataset.i18n] = n.textContent; });
+
+  var ua = navigator.userAgent;
+  var os = /Android|iPhone|iPad/.test(ua) ? null
+         : /Windows/.test(ua) ? "windows"
+         : /Mac OS X|Macintosh/.test(ua) ? "macos"
+         : /Linux|X11/.test(ua) ? "linux" : null;
+  var mine = os && document.querySelector('.dl[data-os="' + os + '"]');
+  var main = document.getElementById("main-download");
+  if (mine) {
+    mine.classList.add("mine");
+    main.href = mine.querySelector("a").href;
+  }
+
+  function setLang(lang) {
+    var dict = lang === "tr" ? tr : en;
+    nodes.forEach(function (n) { n.textContent = dict[n.dataset.i18n] || en[n.dataset.i18n]; });
+    if (mine) {
+      main.textContent = lang === "tr" ? osNames[os] + forOS.tr : forOS.en + osNames[os];
+    }
+    document.documentElement.lang = lang;
+    document.querySelectorAll(".lang button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+    });
+    try { localStorage.setItem("lang", lang); } catch (e) {}
+  }
+
+  document.querySelectorAll(".lang button").forEach(function (b) {
+    b.addEventListener("click", function () { setLang(b.dataset.lang); });
+  });
+
+  // Theme: follow the system until the visitor chooses, then remember it.
+  var themeButton = document.getElementById("theme");
+  var systemLight = window.matchMedia("(prefers-color-scheme: light)");
+  function currentTheme() {
+    return document.documentElement.dataset.theme || (systemLight.matches ? "light" : "dark");
+  }
+  function showTheme() { themeButton.textContent = currentTheme() === "light" ? "☀️" : "🌙"; }
+  try {
+    var savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "light" || savedTheme === "dark") document.documentElement.dataset.theme = savedTheme;
+  } catch (e) {}
+  themeButton.addEventListener("click", function () {
+    var next = currentTheme() === "light" ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    showTheme();
+  });
+  systemLight.addEventListener("change", showTheme);
+  showTheme();
+
+  var saved = null;
+  try { saved = localStorage.getItem("lang"); } catch (e) {}
+  setLang(saved || (/^tr/i.test(navigator.language || "") ? "tr" : "en"));
+})();
+</script>
+</body>
+</html>

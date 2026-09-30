@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Pangolin</title>
+  <desc id="desc">A pangolin curled into a ball that forms a padlock: its tail is the shackle and its nose is the keyhole.</desc>
+
+  <!-- Tile -->
+  <rect width="512" height="512" rx="116" fill="#141A2E"/>
+
+  <!-- Tail, curled over the top as the shackle -->
+  <path d="M150 236 V170 A106 106 0 0 1 362 170 V236 H322 V170 A66 66 0 0 0 190 170 V236 Z" fill="#C97F2B"/>
+  <path d="M163 176 A93 93 0 0 1 349 176 H335 A79 79 0 0 0 177 176 Z" fill="#E8A23E"/>
+
+  <!-- Curled body: nine overlapping scales -->
+  <circle cx="256" cy="300" r="148" fill="#141A2E"/>
+  <path fill="#F6BD60" d="M269.9 215.1 Q285 167 335.6 178.8 Q376.6 205.8 392.9 252.1 Q359.8 211.9 318.6 241 Q298.6 219.8 269.9 215.1 Z"/>
+  <path fill="#E8A23E" d="M321.2 243.9 Q363.7 216.7 394.9 258.3 Q409 305.3 391.6 351.3 Q392.1 299.3 341.9 295 Q340.2 266 321.2 243.9 Z"/>
+  <path fill="#F0B04E" d="M342 298.9 Q392 305.5 389.2 357.4 Q369.8 402.4 327 426.5 Q360.8 387 325 351.4 Q342.3 328.1 342 298.9 Z"/>
+  <path fill="#F6BD60" d="M322.6 354.5 Q356.7 391.6 321.2 429.5 Q277.3 451.6 229.1 442.5 Q280.3 434 275.8 383.7 Q304.1 377 322.6 354.5 Z"/>
+  <path fill="#E8A23E" d="M272 384.5 Q274.2 434.9 222.6 441.1 Q174.9 429.8 143.8 391.8 Q188.5 418.3 217.4 376.8 Q243.4 389.9 272 384.5 Z"/>
+  <path fill="#F0B04E" d="M213.9 375 Q183.2 415.1 139.7 386.7 Q110.4 347.3 111 298.2 Q128.3 347.2 177 334 Q188.5 360.8 213.9 375 Z"/>
+  <path fill="#F6BD60" d="M175.6 330.4 Q126.3 341.4 111.2 291.7 Q114.1 242.7 146.1 205.4 Q127.8 254.1 173.6 275.3 Q165.3 303.2 175.6 330.4 Z"/>
+  <path fill="#E8A23E" d="M174.8 271.6 Q130 248.3 150.5 200.6 Q184.1 164.8 232.6 156.9 Q187.3 182.4 208.8 228.1 Q184.5 244.1 174.8 271.6 Z"/>
+  <path fill="#F0B04E" d="M212.1 226.1 Q192.7 179.5 239.1 156 Q287.8 150.3 330 175.3 Q278.9 165.8 266 214.6 Q237.1 211.2 212.1 226.1 Z"/>
+
+  <!-- Face, tucked into the middle of the curl -->
+  <circle cx="256" cy="300" r="92" fill="#141A2E"/>
+  <circle cx="256" cy="300" r="82" fill="#FFF1D6"/>
+  <circle cx="204" cy="310" r="13" fill="#F7A9A0"/>
+  <circle cx="308" cy="310" r="13" fill="#F7A9A0"/>
+  <circle cx="222" cy="284" r="11" fill="#141A2E"/>
+  <circle cx="290" cy="284" r="11" fill="#141A2E"/>
+  <circle cx="225.5" cy="280.5" r="3.5" fill="#FFF1D6"/>
+  <circle cx="293.5" cy="280.5" r="3.5" fill="#FFF1D6"/>
+
+  <!-- Nose: the keyhole -->
+  <circle cx="256" cy="312" r="15" fill="#141A2E"/>
+  <path d="M249 318 h14 l7 36 a5 5 0 0 1 -5 6 h-18 a5 5 0 0 1 -5 -6 Z" fill="#141A2E"/>
+</svg>
