@@ -134,6 +134,7 @@
   .dl .btn { margin-top: 14px; font-size: 16px; padding: 11px 22px; }
   .dl .os { font-size: 22px; font-weight: 800; margin: 8px 0 0; }
   .dl .arch { color: var(--muted); font-size: 15px; margin: 0; }
+  .dl .how { color: var(--muted); font-size: 14.5px; margin: 14px 0 0; line-height: 1.5; }
   .notes { max-width: 680px; margin: 24px auto 0; color: var(--muted); font-size: 15.5px; }
   .notes li { margin-bottom: 6px; }
   code { background: var(--raised); color: var(--text); padding: 2px 7px; border-radius: 7px; font-size: .88em; word-break: break-word; }
@@ -235,25 +236,35 @@
       <div class="card dl" data-os="windows">
         <div class="emoji" aria-hidden="true">🪟</div>
         <p class="os">Windows</p>
-        <p class="arch">64-bit · .zip</p>
-        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-windows-amd64.zip" data-i18n="download">Download</a>
+        <p class="arch">10 / 11 · 64-bit</p>
+        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-windows-amd64.zip"><span data-i18n="download">Download</span> .zip</a>
+        <p class="how" data-i18n="w-how">Unzip anywhere and run Pangolin.exe.</p>
       </div>
       <div class="card dl" data-os="macos">
         <div class="emoji" aria-hidden="true">🍎</div>
         <p class="os">macOS</p>
-        <p class="arch">Apple Silicon · .tar.gz</p>
-        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-macos-arm64.tar.gz" data-i18n="download">Download</a>
+        <p class="arch">11+ · Apple Silicon &amp; Intel</p>
+        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-macos-universal.dmg"><span data-i18n="download">Download</span> .dmg</a>
+        <p class="how" data-i18n="m-how">Open it and drag Pangolin to Applications.</p>
       </div>
       <div class="card dl" data-os="linux">
         <div class="emoji" aria-hidden="true">🐧</div>
         <p class="os">Linux</p>
-        <p class="arch">x86-64 · .tar.gz</p>
-        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-linux-amd64.tar.gz" data-i18n="download">Download</a>
+        <p class="arch">x86-64 · Debian, Ubuntu, Mint</p>
+        <a class="btn primary" href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-linux-amd64.deb"><span data-i18n="download">Download</span> .deb</a>
+        <p class="how">
+          <span data-i18n="l-how">Other distributions:</span>
+          <a href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-linux-amd64.tar.gz">.tar.gz</a><br>
+          ARM64:
+          <a href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-linux-arm64.deb">.deb</a> ·
+          <a href="https://github.com/KaanBahaSever/pangolin/releases/latest/download/pangolin-linux-arm64.tar.gz">.tar.gz</a>
+        </p>
       </div>
     </div>
     <ul class="notes">
-      <li data-i18n="n1">The builds are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn the first time you open one.</li>
-      <li><span data-i18n="n2">On macOS, after unpacking, run</span> <code>xattr -d com.apple.quarantine pangolin</code></li>
+      <li data-i18n="n1">The builds are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn the first time you open Pangolin.</li>
+      <li data-i18n="n2">On macOS, if it refuses to open: System Settings → Privacy &amp; Security → Open Anyway.</li>
+      <li data-i18n="n4">The Linux .tar.gz contains install.sh, which adds Pangolin to your application menu without root.</li>
       <li><span data-i18n="n3">Each release lists SHA-256 checksums.</span> <a href="https://github.com/KaanBahaSever/pangolin/releases" data-i18n="all">All releases and checksums</a></li>
     </ul>
   </section>
@@ -303,8 +314,12 @@
     s4d: "Pangolin kilitlendiğinde anahtarlar bellekten silinir.",
     arch: "Mimarinin ve tehdit modelinin tamamını okuyun",
     get: "İndir",
-    n1: "Derlemeler henüz kod imzalı değil; bu yüzden ilk açılışta Windows SmartScreen ve macOS Gatekeeper uyarı gösterir.",
-    n2: "macOS'ta paketi açtıktan sonra şunu çalıştırın:",
+    "w-how": "Zip'i istediğiniz yere açın ve Pangolin.exe'yi çalıştırın.",
+    "m-how": "Açın ve Pangolin'i Applications klasörüne sürükleyin.",
+    "l-how": "Diğer dağıtımlar:",
+    n1: "Derlemeler henüz kod imzalı değil; bu yüzden Pangolin'i ilk açışınızda Windows SmartScreen ve macOS Gatekeeper uyarı gösterir.",
+    n2: "macOS açmayı reddederse: Sistem Ayarları → Gizlilik ve Güvenlik → Yine de Aç.",
+    n4: "Linux .tar.gz paketindeki install.sh, Pangolin'i root gerektirmeden uygulama menünüze ekler.",
     n3: "Her sürümde SHA-256 sağlama toplamları yer alır.",
     all: "Tüm sürümler ve sağlama toplamları",
     honest: "İki dürüst not",
