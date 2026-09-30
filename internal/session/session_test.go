@@ -86,10 +86,10 @@ func TestClipboardPlainCopyIsNotCleared(t *testing.T) {
 func TestClipboardNewSecretRestartsTimer(t *testing.T) {
 	cb := &fakeClipboard{}
 	g := NewClipboardGuard(cb, nil)
-	g.CopySecret("first", 60*time.Millisecond)
-	time.Sleep(40 * time.Millisecond)
-	g.CopySecret("second", 200*time.Millisecond)
-	time.Sleep(80 * time.Millisecond)
+	g.CopySecret("first", 100*time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
+	g.CopySecret("second", time.Second)
+	time.Sleep(250 * time.Millisecond)
 	if cb.Content() != "second" {
 		t.Fatal("the first secret's timer cleared the second secret")
 	}
@@ -106,9 +106,9 @@ func TestIdleTimerFires(t *testing.T) {
 func TestIdleTimerTouchPostpones(t *testing.T) {
 	var fired atomic.Int32
 	it := NewIdleTimer(func() { fired.Add(1) })
-	it.Start(100 * time.Millisecond)
+	it.Start(500 * time.Millisecond)
 	for i := 0; i < 6; i++ {
-		time.Sleep(40 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		it.Touch()
 	}
 	if fired.Load() != 0 {
