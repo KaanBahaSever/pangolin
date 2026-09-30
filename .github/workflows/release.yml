@@ -1,18 +1,18 @@
 name: Release
 
-# Pushing a tag such as v0.1.0 tests and builds Pangolin on each platform and
-# publishes the packages, with checksums, as a GitHub release. The website's
-# download buttons point at the latest release.
+# Pushing a tag such as v1.2.3 tests and packages Pangolin on each platform
+# and publishes the packages, with checksums, as a GitHub release. The
+# website's download buttons point at the latest release.
+#
+# Running the workflow by hand builds the same packages as artifacts without
+# publishing anything, to try out packaging changes.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
-
-env:
-  CGO_ENABLED: "1"
-  CGO_CFLAGS: "-w"
 
 jobs:
   build:
@@ -23,9 +23,11 @@ jobs:
           - os: windows-latest
             name: windows-amd64
           - os: macos-latest
-            name: macos-arm64
+            name: macos-universal
           - os: ubuntu-22.04 # an older glibc keeps the binary usable on more distributions
             name: linux-amd64
+          - os: ubuntu-22.04-arm
+            name: linux-arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -35,28 +37,26 @@ jobs:
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
-      - run: go test ./...
-      - name: Build and package
+      - name: Test
+        shell: bash
+        run: CGO_ENABLED=1 CGO_CFLAGS=-w go test ./...
+      - name: Package
         shell: bash
         run: |
-          mkdir -p dist/pangolin
-          cp LICENSE README.md dist/pangolin/
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            go build -trimpath -ldflags "-s -w -H=windowsgui" -o dist/pangolin/pangolin.exe ./cmd/pangolin
-            (cd dist && 7z a -tzip "../pangolin-${{ matrix.name }}.zip" pangolin)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
           else
-            go build -trimpath -ldflags "-s -w" -o dist/pangolin/pangolin ./cmd/pangolin
-            tar -czf "pangolin-${{ matrix.name }}.tar.gz" -C dist pangolin
+            version="0.0.0-dev"
           fi
+          bash packaging/build.sh "$version"
       - uses: actions/upload-artifact@v4
         with:
           name: pangolin-${{ matrix.name }}
-          path: |
-            pangolin-*.zip
-            pangolin-*.tar.gz
+          path: dist/*
           if-no-files-found: error
 
   publish:
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     steps:
