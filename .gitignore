@@ -1,0 +1,57 @@
+# Build output
+/bin/
+/dist/
+/pangolin
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.app/
+*.syso
+fyne-cross/
+
+# Go
+*.test
+*.out
+*.prof
+coverage.*
+/vendor/
+go.work
+go.work.sum
+
+# Vaults and key material: never commit these, not even test ones
+vault.db
+vault.db-journal
+vault.db-wal
+vault.db-shm
+vault.db.orphan-*
+vault.header
+vault.header.*.tmp
+*.vault
+*.key
+*.pem
+*.p12
+*.kdbx
+.env
+.env.*
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+.claude/
+
+# Operating system
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+/tmp/
