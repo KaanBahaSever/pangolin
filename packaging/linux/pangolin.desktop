@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Pangolin
+GenericName=Password Keeper
+GenericName[tr]=Parola Kasası
+Comment=Local-first password keeper
+Comment[tr]=Yerel çalışan parola kasası
+Exec=pangolin
+Icon=pangolin
+Terminal=false
+Categories=Utility;Security;
+Keywords=password;vault;secret;parola;şifre;kasa;
