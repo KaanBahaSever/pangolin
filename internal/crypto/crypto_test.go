@@ -3,6 +3,7 @@ package crypto
 import (
 	"bytes"
 	"errors"
+	"runtime"
 	"testing"
 )
 
@@ -138,5 +139,24 @@ func TestWipe(t *testing.T) {
 	Wipe(b)
 	if !bytes.Equal(b, make([]byte, 6)) {
 		t.Fatal("not wiped")
+	}
+}
+
+// Argon2id's working memory must go back to the operating system after each
+// derivation, not pile up over repeated unlock attempts.
+func TestDeriveKEKReleasesMemory(t *testing.T) {
+	p := DefaultKDFParams()
+	for i := 0; i < 2; i++ {
+		k, err := DeriveKEK([]byte("a guess"), RandomBytes(SaltSize), p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		k.Destroy()
+	}
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	held := (m.HeapSys - m.HeapReleased) >> 20
+	if limit := uint64(p.MemoryKiB>>10) / 4; held > limit {
+		t.Fatalf("process still holds %d MiB after two derivations of %d MiB", held, p.MemoryKiB>>10)
 	}
 }

@@ -308,6 +308,9 @@ both what is done and what is not.
 - KEK, MK and the field key live in `memguard` locked buffers: pinned in RAM
   (no swap), surrounded by guard pages, wiped when destroyed.
 - The KEK is destroyed as soon as MK has been unwrapped.
+- Argon2id's working memory (256 MiB) is handed back to the operating system
+  as soon as each derivation finishes, so repeated unlock attempts do not
+  leave the process holding hundreds of megabytes.
 - Core dumps are disabled at start-up where the platform allows it.
 - Locking destroys every key buffer, closes the database (SQLCipher wipes its
   own key and page cache), clears the clipboard if Pangolin filled it, and

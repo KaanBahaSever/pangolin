@@ -6,6 +6,7 @@ package crypto
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/awnumar/memguard"
 	"golang.org/x/crypto/argon2"
@@ -69,6 +70,10 @@ func DeriveKEK(password, salt []byte, p KDFParams) (*memguard.LockedBuffer, erro
 		return nil, errors.New("crypto: empty password")
 	}
 	key := argon2.IDKey(password, salt, p.Time, p.MemoryKiB, p.Threads, KeySize)
+	// Argon2id's working memory (MemoryKiB, 256 MiB by default) is garbage
+	// now. Left to the garbage collector it lingers and piles up over a few
+	// unlock attempts; return it to the operating system straight away.
+	debug.FreeOSMemory()
 	// NewBufferFromBytes wipes key after copying it into locked memory.
 	return memguard.NewBufferFromBytes(key), nil
 }
