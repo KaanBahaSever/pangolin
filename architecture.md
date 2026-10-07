@@ -358,29 +358,34 @@ it cannot be recovered. Minimum 12 characters.
 **Unlock.** One field. Enter unlocks. Errors do not say whether the password or
 the file was at fault.
 
-**Vault.**
+**Vault.** A fixed sidebar and a content area.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ [ Search…                              ]   [+ New]  [⚙] [🔒] │
-├──────────────────────┬──────────────────────────────────────┤
-│ GitHub               │  GitHub                              │
-│ octocat              │  Username   octocat         [Copy]   │
-│──────────────────────│  Password   ••••••••  [Show][Copy]   │
-│ Mail                 │  URL        github.com      [Copy]   │
-│ me@example.com       │  Notes      ••••••••        [Show]   │
-│                      │                                      │
-│                      │                   [Edit]  [Delete]   │
-└──────────────────────┴──────────────────────────────────────┘
+┌───────────────────────┬─────────────────────────────────────────┐
+│ (logo) Pangolin    ⚙  │  (G) GitHub                [Edit] [🗑]  │
+│ [ Search…        🔍 ] │      github.com                         │
+│ (B) Bank              │  ╭─────────────────────────────────────╮ │
+│ (G) GitHub        ◀── │  │ Username   octocat              ⧉   │ │
+│ (H) Home Wi-Fi        │  │ Password   ••••••••••        👁  ⧉   │ │
+│                       │  │ Website    github.com           ⧉   │ │
+│                       │  │ Notes      Hidden               👁   │ │
+│ [+ New entry] 🔒 Lock │  ╰─────────────────────────────────────╯ │
+└───────────────────────┴─────────────────────────────────────────┘
 ```
 
-- Search filters as you type, across title, username and URL.
+- Each entry has a coloured initial, derived from its title, so it is easy to
+  spot in the list.
+- Every page in the content area starts at the top and scrolls; cards are as
+  tall as their content.
+- Search filters as you type, across title, username and website.
 - Passwords are masked until shown, and are masked again when another entry
   is selected.
-- The editor has a built-in generator (length and character classes).
+- The editor has a built-in generator that previews the password while the
+  length and character classes change.
 - Delete asks for confirmation. Nothing else does.
-- Settings: language, theme, auto-lock delay, clipboard delay, change master
-  password.
+- Settings is a page with three sections: Appearance (language, theme),
+  Security (auto-lock delay, clipboard delay, master password) and About
+  (version, vault folder).
 - English and Turkish. The first run follows the system language; the choice
   can be changed on the first screen or in the settings and is remembered.
   Search is case-insensitive in both, including the Turkish dotted and
@@ -415,7 +420,9 @@ can be replaced without changing its callers.
 
 - **crypto**: round trips, tamper detection, wrong key, wrong associated data,
   parameter bounds.
-- **vault**: create/unlock/lock, wrong password, header tampering, CRUD,
+- **vault**: opening a vault written by version 1.0 (`testdata/v1`), so an
+  upgrade never strands existing data; create/unlock/lock, wrong password,
+  header tampering, CRUD,
   ciphertext swapping between entries, password change, persistence across
   reopen, and a scan of the raw files for known plaintext.
 - **generator**: length, requested classes present, invalid options rejected.

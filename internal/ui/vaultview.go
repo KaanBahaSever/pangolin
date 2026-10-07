@@ -1,7 +1,11 @@
 package ui
 
 import (
+	"image/color"
+	"time"
+
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -14,8 +18,18 @@ import (
 
 const masked = "••••••••••••"
 
-// vaultView is the unlocked screen: search and list on the left, one entry
-// or the editor on the right.
+// page is what the content area on the right shows.
+type page int
+
+const (
+	pageEmpty page = iota
+	pageDetail
+	pageEditor
+	pageSettings
+)
+
+// vaultView is the unlocked screen: a sidebar with search and the list of
+// entries, and a content area for one entry, the editor or the settings.
 type vaultView struct {
 	a       *App
 	content fyne.CanvasObject
@@ -26,8 +40,11 @@ type vaultView struct {
 	status *widget.Label
 
 	items    []vault.Summary
-	selected string // ID of the entry shown in the pane, if any
+	page     page
+	selected string // ID of the entry shown, if any
 	editor   *editor
+
+	statusTimer *time.Timer
 }
 
 func newVaultView(a *App) *vaultView {
@@ -35,12 +52,13 @@ func newVaultView(a *App) *vaultView {
 
 	vv.search = widget.NewEntry()
 	vv.search.SetPlaceHolder(i18n.T("Search"))
+	vv.search.ActionItem = widget.NewIcon(theme.SearchIcon())
 	vv.search.OnChanged = func(string) {
 		a.touch()
 		vv.reload()
-		// An open editor is left alone; a shown entry is put away, which
-		// also masks its password again.
-		if vv.editor == nil {
+		// An open editor or the settings stay; a shown entry is put away,
+		// which also masks its password again.
+		if vv.page == pageDetail || vv.page == pageEmpty {
 			vv.showPlaceholder()
 		}
 	}
@@ -50,15 +68,27 @@ func newVaultView(a *App) *vaultView {
 		func() fyne.CanvasObject {
 			title := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 			title.Truncation = fyne.TextTruncateEllipsis
-			user := widget.NewLabel("")
+			user := muted("")
 			user.Truncation = fyne.TextTruncateEllipsis
-			user.Importance = widget.LowImportance
-			return container.New(layout.NewCustomPaddedVBoxLayout(-theme.Padding()*2), title, user)
+			user.SizeName = theme.SizeNameCaptionText
+			text := container.New(layout.NewCustomPaddedVBoxLayout(-theme.Padding()*3), title, user)
+			// The avatar slot has a fixed size, so the row's layout never
+			// depends on which avatar is in it.
+			slot := canvas.NewRectangle(color.Transparent)
+			slot.SetMinSize(fyne.NewSize(34, 34))
+			return container.NewBorder(nil, nil, container.NewStack(slot), nil, text)
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
+			s := vv.items[i]
 			row := o.(*fyne.Container)
-			row.Objects[0].(*widget.Label).SetText(vv.items[i].Title)
-			row.Objects[1].(*widget.Label).SetText(vv.items[i].Username)
+			text := row.Objects[0].(*fyne.Container)
+			text.Objects[0].(*widget.Label).SetText(s.Title)
+			user := text.Objects[1].(*widget.Label)
+			user.SetText(s.Username)
+			// The avatar depends on the title, so it is rebuilt for each row.
+			slot := row.Objects[1].(*fyne.Container)
+			slot.Objects = []fyne.CanvasObject{slot.Objects[0], avatar(s.Title, 34)}
+			slot.Refresh()
 		},
 	)
 	vv.list.OnSelected = func(i widget.ListItemID) {
@@ -66,21 +96,35 @@ func newVaultView(a *App) *vaultView {
 		vv.showDetail(vv.items[i])
 	}
 
-	add := widget.NewButtonWithIcon(i18n.T("New"), theme.ContentAddIcon(), vv.newEntry)
-	add.Importance = widget.HighImportance
-	settings := widget.NewButtonWithIcon("", theme.SettingsIcon(), func() { a.showSettings() })
-	lock := widget.NewButtonWithIcon(i18n.T("Lock"), theme.LogoutIcon(), a.lock)
+	name := widget.NewLabelWithStyle("Pangolin", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	settings := flatButton(theme.SettingsIcon(), vv.showSettings)
+	header := container.NewBorder(nil, nil, container.NewHBox(logoImage(38), name), settings)
 
-	vv.status = widget.NewLabel("")
-	vv.status.Importance = widget.LowImportance
+	add := widget.NewButtonWithIcon(i18n.T("New entry"), theme.ContentAddIcon(), vv.newEntry)
+	add.Importance = widget.HighImportance
+	lock := widget.NewButtonWithIcon(i18n.T("Lock"), lockIcon, a.lock)
+	lock.Importance = widget.LowImportance
+	footer := container.NewBorder(nil, nil, nil, lock, add)
+
+	// A strut fixes the sidebar's width.
+	strut := canvas.NewRectangle(color.Transparent)
+	strut.SetMinSize(fyne.NewSize(290, 0))
+	sidebar := container.NewStack(
+		newSurface(colorNameSidebar, "", 0),
+		strut,
+		container.New(layout.NewCustomPaddedLayout(12, 12, 12, 12),
+			container.NewBorder(container.NewVBox(header, vv.search), footer, nil, nil, vv.list)),
+	)
+
+	vv.status = muted("")
 	vv.status.Truncation = fyne.TextTruncateEllipsis
+	vv.status.SizeName = theme.SizeNameCaptionText
 
 	vv.pane = container.NewStack()
-	split := container.NewHSplit(vv.list, container.NewPadded(vv.pane))
-	split.SetOffset(0.34)
+	main := container.New(layout.NewCustomPaddedLayout(18, 8, 26, 12),
+		container.NewBorder(nil, vv.status, nil, nil, vv.pane))
 
-	top := container.NewBorder(nil, nil, nil, container.NewHBox(add, settings, lock), vv.search)
-	vv.content = container.NewPadded(container.NewBorder(top, vv.status, nil, nil, split))
+	vv.content = container.NewBorder(nil, nil, container.NewHBox(sidebar, widget.NewSeparator()), nil, main)
 
 	vv.reload()
 	vv.showPlaceholder()
@@ -90,6 +134,21 @@ func newVaultView(a *App) *vaultView {
 // fail reports an error in a dialog.
 func (vv *vaultView) fail(err error) {
 	vv.a.showError(err)
+}
+
+// say shows a short message under the content for a few seconds.
+func (vv *vaultView) say(message string) {
+	vv.status.SetText(message)
+	if vv.statusTimer != nil {
+		vv.statusTimer.Stop()
+	}
+	vv.statusTimer = time.AfterFunc(6*time.Second, func() {
+		fyne.Do(func() {
+			if vv.status.Text == message {
+				vv.status.SetText("")
+			}
+		})
+	})
 }
 
 // reload re-reads the list from the vault, keeping the current search.
@@ -104,22 +163,32 @@ func (vv *vaultView) reload() {
 	vv.list.Refresh()
 }
 
-func (vv *vaultView) setPane(o fyne.CanvasObject) {
-	vv.editor = nil
+// setPage replaces the content area. Everything is top-aligned and scrolls,
+// so a short page never leaves a gap in the middle.
+func (vv *vaultView) setPage(p page, o fyne.CanvasObject) {
+	vv.page = p
+	if p != pageEditor {
+		vv.editor = nil
+	}
+	if p != pageDetail {
+		vv.selected = ""
+	}
 	vv.pane.Objects = []fyne.CanvasObject{o}
+	// Pages scroll; the right margin keeps card edges clear of the scroll bar.
 	vv.pane.Refresh()
 }
 
 func (vv *vaultView) showPlaceholder() {
-	vv.selected = ""
-	text := i18n.T("Select an entry")
+	title, hint := i18n.T("Nothing selected"), i18n.T("Pick an entry on the left, or add a new one.")
 	if len(vv.items) == 0 && vv.search.Text == "" {
-		text = i18n.T("Your vault is empty.\nAdd your first entry with New.")
+		title, hint = i18n.T("Your vault is empty"), i18n.T("Add your first entry with New entry.")
 	}
-	label := widget.NewLabel(text)
-	label.Alignment = fyne.TextAlignCenter
-	label.Importance = widget.LowImportance
-	vv.setPane(container.NewCenter(label))
+	t := widget.NewLabelWithStyle(title, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	t.SizeName = theme.SizeNameSubHeadingText
+	h := muted(hint)
+	h.Alignment = fyne.TextAlignCenter
+	vv.list.UnselectAll()
+	vv.setPage(pageEmpty, container.NewCenter(container.NewVBox(container.NewCenter(logoImage(120)), t, h)))
 }
 
 // show selects the entry with the given ID, clearing the search if it hides it.
@@ -158,52 +227,43 @@ func (vv *vaultView) secret(id string, f vault.Field, use func(string)) {
 func (vv *vaultView) copyPassword(id string) {
 	ttl := vv.a.clipboardTTL()
 	vv.secret(id, vault.FieldPassword, func(s string) { vv.a.clip.CopySecret(s, ttl) })
-	vv.status.SetText(i18n.Tf("Password copied. The clipboard will be cleared in %d seconds.", int(ttl.Seconds())))
+	vv.say(i18n.Tf("Password copied. The clipboard will be cleared in %d seconds.", int(ttl.Seconds())))
 }
 
 func (vv *vaultView) copyPlain(value, message string) {
 	vv.a.clip.CopyPlain(value)
-	vv.status.SetText(message)
+	vv.say(message)
 }
 
 func (vv *vaultView) showDetail(s vault.Summary) {
 	a := vv.a
-	vv.selected = s.ID
-	vv.status.SetText("")
-
-	title := widget.NewLabelWithStyle(s.Title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	title.SizeName = theme.SizeNameSubHeadingText
-	title.Truncation = fyne.TextTruncateEllipsis
-
-	form := container.New(layout.NewFormLayout())
-	addRow := func(name string, value fyne.CanvasObject, buttons ...fyne.CanvasObject) {
-		label := widget.NewLabel(name)
-		label.Importance = widget.LowImportance
-		form.Add(label)
-		form.Add(container.NewBorder(nil, nil, nil, container.NewHBox(buttons...), value))
-	}
-	plain := func(text string) *widget.Label {
-		l := widget.NewLabel(text)
-		l.Truncation = fyne.TextTruncateEllipsis
-		return l
-	}
-	icon := func(res fyne.Resource, tapped func()) *widget.Button {
-		return widget.NewButtonWithIcon("", res, func() {
+	action := func(icon fyne.Resource, tapped func()) *widget.Button {
+		return flatButton(icon, func() {
 			a.touch()
 			tapped()
 		})
 	}
+	field := func(name string, value fyne.CanvasObject, actions ...fyne.CanvasObject) fyne.CanvasObject {
+		label := container.New(layout.NewCustomPaddedVBoxLayout(-theme.Padding()*2), caption(name), value)
+		return container.NewBorder(nil, nil, nil, container.NewCenter(container.NewHBox(actions...)), label)
+	}
+	value := func(text string) *widget.Label {
+		l := widget.NewLabel(text)
+		l.Truncation = fyne.TextTruncateEllipsis
+		return l
+	}
 
+	var rows []fyne.CanvasObject
 	if s.Username != "" {
-		addRow(i18n.T("Username"), plain(s.Username),
-			icon(theme.ContentCopyIcon(), func() { vv.copyPlain(s.Username, i18n.T("Username copied.")) }))
+		rows = append(rows, field(i18n.T("Username"), value(s.Username),
+			action(theme.ContentCopyIcon(), func() { vv.copyPlain(s.Username, i18n.T("Username copied.")) })))
 	}
 
 	password := widget.NewLabelWithStyle(masked, fyne.TextAlignLeading, fyne.TextStyle{Monospace: true})
 	password.Truncation = fyne.TextTruncateEllipsis
 	var reveal *widget.Button
 	shown := false
-	reveal = icon(theme.VisibilityIcon(), func() {
+	reveal = action(theme.VisibilityIcon(), func() {
 		if shown {
 			password.SetText(masked)
 			reveal.SetIcon(theme.VisibilityIcon())
@@ -216,24 +276,23 @@ func (vv *vaultView) showDetail(s vault.Summary) {
 			shown = true
 		})
 	})
-	addRow(i18n.T("Password"), password, reveal,
-		icon(theme.ContentCopyIcon(), func() { vv.copyPassword(s.ID) }))
+	rows = append(rows, field(i18n.T("Password"), password, reveal,
+		action(theme.ContentCopyIcon(), func() { vv.copyPassword(s.ID) })))
 
 	if s.URL != "" {
-		addRow(i18n.T("URL"), plain(s.URL),
-			icon(theme.ContentCopyIcon(), func() { vv.copyPlain(s.URL, i18n.T("URL copied.")) }))
+		rows = append(rows, field(i18n.T("Website"), value(s.URL),
+			action(theme.ContentCopyIcon(), func() { vv.copyPlain(s.URL, i18n.T("Website copied.")) })))
 	}
 
 	if s.HasNotes {
-		notes := widget.NewLabel(i18n.T("Hidden"))
+		notes := muted(i18n.T("Hidden"))
 		notes.Wrapping = fyne.TextWrapWord
-		notes.Importance = widget.LowImportance
 		var toggle *widget.Button
 		notesShown := false
-		toggle = icon(theme.VisibilityIcon(), func() {
+		toggle = action(theme.VisibilityIcon(), func() {
 			if notesShown {
-				notes.SetText(i18n.T("Hidden"))
 				notes.Importance = widget.LowImportance
+				notes.SetText(i18n.T("Hidden"))
 				toggle.SetIcon(theme.VisibilityIcon())
 				notesShown = false
 				return
@@ -245,17 +304,14 @@ func (vv *vaultView) showDetail(s vault.Summary) {
 				notesShown = true
 			})
 		})
-		addRow(i18n.T("Notes"), notes, toggle)
+		rows = append(rows, field(i18n.T("Notes"), notes, toggle))
 	}
-
-	updated := widget.NewLabel(i18n.Tf("Updated %s", s.UpdatedAt.Format("2006-01-02 15:04")))
-	updated.Importance = widget.LowImportance
 
 	edit := widget.NewButtonWithIcon(i18n.T("Edit"), theme.DocumentCreateIcon(), func() {
 		a.touch()
 		vv.editEntry(s)
 	})
-	remove := widget.NewButtonWithIcon(i18n.T("Delete"), theme.DeleteIcon(), func() {
+	remove := widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {
 		a.touch()
 		a.showConfirm(i18n.T("Delete entry"), i18n.Tf("Delete “%s”? This cannot be undone.", s.Title), i18n.T("Delete"), func(ok bool) {
 			if !ok {
@@ -267,11 +323,23 @@ func (vv *vaultView) showDetail(s vault.Summary) {
 			}
 			vv.reload()
 			vv.showPlaceholder()
-			vv.status.SetText(i18n.T("Entry deleted."))
+			vv.say(i18n.T("Entry deleted."))
 		})
 	})
 	remove.Importance = widget.DangerImportance
 
-	footer := container.NewBorder(nil, nil, updated, container.NewHBox(edit, remove))
-	vv.setPane(container.NewBorder(title, footer, nil, nil, container.NewVScroll(form)))
+	subtitle := muted(s.URL)
+	if s.URL == "" {
+		subtitle.SetText(s.Username)
+	}
+	subtitle.Truncation = fyne.TextTruncateEllipsis
+	titles := container.New(layout.NewCustomPaddedVBoxLayout(-theme.Padding()*2), heading(s.Title), subtitle)
+	header := container.NewBorder(nil, nil, avatar(s.Title, 52),
+		container.NewCenter(container.NewHBox(edit, remove)), titles)
+
+	updated := muted(i18n.Tf("Updated %s", s.UpdatedAt.Format("2006-01-02 15:04")))
+	updated.SizeName = theme.SizeNameCaptionText
+
+	vv.setPage(pageDetail, scrollPage(header, cardRows(rows...), updated))
+	vv.selected = s.ID
 }

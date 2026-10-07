@@ -7,6 +7,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/KaanBahaSever/pangolin/internal/crypto"
@@ -29,6 +31,7 @@ var (
 		{"After 10 seconds", 10}, {"After 20 seconds", 20}, {"After 30 seconds", 30},
 		{"After 60 seconds", 60},
 	}
+	themeModes = []string{themeSystem, themeLight, themeDark}
 )
 
 // choiceSelect builds a drop-down bound to an integer preference.
@@ -58,67 +61,139 @@ func (a *App) choiceSelect(choices []choice, key string, fallback int, changed f
 	return s
 }
 
-func (a *App) showSettings() {
+func languageNames() []string {
+	names := make([]string, len(i18n.Languages))
+	for i, l := range i18n.Languages {
+		names[i] = l.Name()
+	}
+	return names
+}
+
+func languageIndex() int {
+	for i, l := range i18n.Languages {
+		if l == i18n.Current() {
+			return i
+		}
+	}
+	return 0
+}
+
+// wide gives a control a fixed width, so a drop-down shows its whole text.
+func wide(o fyne.CanvasObject, width float32) fyne.CanvasObject {
+	return container.New(layout.NewGridWrapLayout(fyne.NewSize(width, o.MinSize().Height)), o)
+}
+
+// setting is one row of a settings card: a name and a short explanation on
+// the left, the control on the right.
+func setting(name, description string, control fyne.CanvasObject) fyne.CanvasObject {
+	title := widget.NewLabelWithStyle(name, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	text := container.New(layout.NewCustomPaddedVBoxLayout(-theme.Padding()*3), title)
+	if description != "" {
+		d := muted(description)
+		d.SizeName = theme.SizeNameCaptionText
+		d.Wrapping = fyne.TextWrapWord
+		text.Add(d)
+	}
+	return container.NewBorder(nil, nil, nil, container.NewCenter(control), text)
+}
+
+// section is a caption followed by a card.
+func section(name string, rows ...fyne.CanvasObject) fyne.CanvasObject {
+	return container.NewVBox(caption(name), cardRows(rows...))
+}
+
+func (vv *vaultView) showSettings() {
+	a := vv.a
 	a.touch()
+	vv.list.UnselectAll()
+
+	themeIndex := 0
+	current := a.fyne.Preferences().StringWithFallback(prefTheme, themeSystem)
+	for i, mode := range themeModes {
+		if mode == current {
+			themeIndex = i
+		}
+	}
+	appearance := section(i18n.T("Appearance"),
+		setting(i18n.T("Language"), "",
+			segmented(languageNames(), languageIndex(), func(i int) { a.setLanguage(i18n.Languages[i]) })),
+		setting(i18n.T("Theme"), "",
+			segmented([]string{i18n.T("System"), i18n.T("Light"), i18n.T("Dark")}, themeIndex,
+				func(i int) { a.setTheme(themeModes[i]) })),
+	)
+
 	autoLock := a.choiceSelect(autoLockChoices, prefAutoLockMinutes, defaultAutoLockMinutes,
 		func() { a.idle.Start(a.autoLock()) })
 	clipboard := a.choiceSelect(clipboardChoices, prefClipboardSeconds, defaultClipboardSeconds, nil)
 
-	var d dialog.Dialog
-	change := widget.NewButton(i18n.T("Change master password…"), func() {
-		d.Hide()
-		a.showChangePassword()
-	})
-	form := widget.NewForm(
-		widget.NewFormItem(i18n.T("Language"), a.languageSelect()),
-		widget.NewFormItem(i18n.T("Theme"), a.themeSelect()),
-		widget.NewFormItem(i18n.T("Lock when idle"), autoLock),
-		widget.NewFormItem(i18n.T("Clear clipboard"), clipboard),
-		widget.NewFormItem("", change),
-	)
-	about := widget.NewLabel("Pangolin " + version.Version)
-	about.Alignment = fyne.TextAlignCenter
-	about.Importance = widget.LowImportance
-	d = dialog.NewCustom(i18n.T("Settings"), i18n.T("Close"), container.NewPadded(container.NewVBox(form, about)), a.win)
-	d.Resize(fyne.NewSize(420, 0))
-	d.Show()
-}
-
-func (a *App) showChangePassword() {
-	title := i18n.T("Change master password")
-	current := widget.NewPasswordEntry()
-	next := widget.NewPasswordEntry()
-	confirm := widget.NewPasswordEntry()
-	items := []*widget.FormItem{
-		widget.NewFormItem(i18n.T("Current"), current),
-		widget.NewFormItem(i18n.T("New"), next),
-		widget.NewFormItem(i18n.T("Repeat new"), confirm),
+	// Changing the master password opens a small form inside the card.
+	passwordRow := container.NewVBox()
+	var showChange func()
+	collapsed := func() {
+		change := widget.NewButton(i18n.T("Change"), func() { showChange() })
+		passwordRow.Objects = []fyne.CanvasObject{setting(i18n.T("Master password"),
+			i18n.T("Unlocks the vault. It cannot be recovered."), change)}
+		passwordRow.Refresh()
 	}
-	d := dialog.NewForm(title, i18n.T("Change"), i18n.T("Cancel"), items, func(ok bool) {
+	showChange = func() {
 		a.touch()
-		if !ok {
-			return
+		current, next, confirm := widget.NewPasswordEntry(), widget.NewPasswordEntry(), widget.NewPasswordEntry()
+		current.SetPlaceHolder(i18n.T("Current password"))
+		next.SetPlaceHolder(i18n.T("New password"))
+		confirm.SetPlaceHolder(i18n.T("Repeat new password"))
+		cancel := widget.NewButton(i18n.T("Cancel"), collapsed)
+		cancel.Importance = widget.LowImportance
+		submit := widget.NewButton(i18n.T("Change password"), nil)
+		submit.Importance = widget.HighImportance
+		submit.OnTapped = func() {
+			a.touch()
+			switch {
+			case utf8.RuneCountInString(next.Text) < vault.MinPasswordLength:
+				vv.say(i18n.Tf("Use at least %d characters.", vault.MinPasswordLength))
+				return
+			case next.Text != confirm.Text:
+				vv.say(i18n.T("The two new passwords do not match."))
+				return
+			}
+			a.changePassword([]byte(current.Text), []byte(next.Text), collapsed)
+			current.SetText("")
+			next.SetText("")
+			confirm.SetText("")
 		}
-		switch {
-		case utf8.RuneCountInString(next.Text) < vault.MinPasswordLength:
-			a.showInfo(title, i18n.Tf("Use at least %d characters.", vault.MinPasswordLength))
-			return
-		case next.Text != confirm.Text:
-			a.showInfo(title, i18n.T("The two new passwords do not match."))
-			return
-		}
-		a.changePassword([]byte(current.Text), []byte(next.Text))
-		current.SetText("")
-		next.SetText("")
-		confirm.SetText("")
-	}, a.win)
-	d.Resize(fyne.NewSize(420, 0))
-	d.Show()
+		passwordRow.Objects = []fyne.CanvasObject{container.NewVBox(
+			widget.NewLabelWithStyle(i18n.T("Master password"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+			current, next, confirm,
+			container.NewHBox(layout.NewSpacer(), cancel, submit),
+		)}
+		passwordRow.Refresh()
+		a.win.Canvas().Focus(current)
+	}
+	collapsed()
+
+	security := section(i18n.T("Security"),
+		setting(i18n.T("Lock when idle"), i18n.T("Locks the vault when you have not used it for a while."), wide(autoLock, 190)),
+		setting(i18n.T("Clear clipboard"), i18n.T("Removes a copied password from the clipboard."), wide(clipboard, 190)),
+		passwordRow,
+	)
+
+	folder := widget.NewLabel(a.dir)
+	folder.Selectable = true
+	folder.Wrapping = fyne.TextWrapBreak
+	name := widget.NewLabelWithStyle(i18n.Tf("Pangolin %s", version.Version), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	license := muted(i18n.T("Free and open source, MIT License."))
+	license.SizeName = theme.SizeNameCaptionText
+	about := section(i18n.T("About"),
+		container.NewBorder(nil, nil, logoImage(56), nil,
+			container.New(layout.NewCustomPaddedVBoxLayout(-theme.Padding()*3), name, license)),
+		container.NewVBox(caption(i18n.T("Vault folder")), folder),
+	)
+
+	vv.setPage(pageSettings, scrollPage(heading(i18n.T("Settings")), appearance, security, about))
 }
 
 // changePassword runs the two key derivations off the UI thread. It takes
-// ownership of both slices and wipes them.
-func (a *App) changePassword(current, next []byte) {
+// ownership of both slices and wipes them. done runs after a success.
+func (a *App) changePassword(current, next []byte, done func()) {
 	v := a.vault
 	if v == nil || !a.busy.CompareAndSwap(false, true) {
 		crypto.Wipe(current)
@@ -126,8 +201,7 @@ func (a *App) changePassword(current, next []byte) {
 		return
 	}
 	title := i18n.T("Change master password")
-	progress := dialog.NewCustomWithoutButtons(title,
-		widget.NewProgressBarInfinite(), a.win)
+	progress := dialog.NewCustomWithoutButtons(title, widget.NewProgressBarInfinite(), a.win)
 	progress.Show()
 
 	go func() {
@@ -145,48 +219,9 @@ func (a *App) changePassword(current, next []byte) {
 			case err != nil:
 				a.showError(err)
 			default:
+				done()
 				a.showInfo(title, i18n.T("The master password has been changed."))
 			}
 		})
 	}()
-}
-
-// languageSelect builds the language drop-down used on the first screen and
-// in the settings.
-func (a *App) languageSelect() *widget.Select {
-	names := make([]string, len(i18n.Languages))
-	for i, l := range i18n.Languages {
-		names[i] = l.Name()
-	}
-	s := widget.NewSelect(names, nil)
-	s.Selected = i18n.Current().Name()
-	s.OnChanged = func(name string) {
-		for _, l := range i18n.Languages {
-			if l.Name() == name && l != i18n.Current() {
-				a.setLanguage(l)
-			}
-		}
-	}
-	return s
-}
-
-// themeSelect builds the drop-down for the light, dark or system theme.
-func (a *App) themeSelect() *widget.Select {
-	modes := []string{themeSystem, themeLight, themeDark}
-	labels := []string{i18n.T("Same as system"), i18n.T("Light"), i18n.T("Dark")}
-	s := widget.NewSelect(labels, nil)
-	current := a.fyne.Preferences().StringWithFallback(prefTheme, themeSystem)
-	for i, mode := range modes {
-		if mode == current {
-			s.Selected = labels[i]
-		}
-	}
-	s.OnChanged = func(label string) {
-		for i := range labels {
-			if labels[i] == label {
-				a.setTheme(modes[i])
-			}
-		}
-	}
-	return s
 }

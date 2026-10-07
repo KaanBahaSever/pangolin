@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"image/color"
 	"unicode/utf8"
 
 	"fyne.io/fyne/v2"
@@ -14,6 +15,12 @@ import (
 	"github.com/KaanBahaSever/pangolin/internal/i18n"
 	"github.com/KaanBahaSever/pangolin/internal/vault"
 )
+
+// say shows a message under the button.
+func (g *gate) say(message string) {
+	g.status.SetText(message)
+	g.status.Show()
+}
 
 // gate is the screen shown while locked: "create" on first run, "unlock" after.
 type gate struct {
@@ -32,20 +39,22 @@ func (a *App) showGate() {
 	}
 	g.password.SetPlaceHolder(i18n.T("Master password"))
 	g.status.Alignment = fyne.TextAlignCenter
-
-	image := canvas.NewImageFromResource(logo)
-	image.FillMode = canvas.ImageFillContain
-	image.SetMinSize(fyne.NewSize(120, 120))
+	g.status.Importance = widget.DangerImportance
+	g.status.Hide() // shown with the first message
 
 	title := widget.NewLabelWithStyle("Pangolin", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	title.SizeName = theme.SizeNameHeadingText
 
-	// An invisible strut gives the column its width.
-	strut := canvas.NewRectangle(nil)
+	subtitle := muted("")
+	subtitle.Alignment = fyne.TextAlignCenter
+
+	// An invisible strut gives the card its width.
+	strut := canvas.NewRectangle(color.Transparent)
 	strut.SetMinSize(fyne.NewSize(360, 0))
 
-	column := container.NewVBox(image, title, strut)
+	form := container.NewVBox(strut, container.NewCenter(logoImage(128)), title, subtitle)
 	if creating {
+		subtitle.SetText(i18n.T("Create your vault"))
 		g.confirm = widget.NewPasswordEntry()
 		g.confirm.SetPlaceHolder(i18n.T("Repeat master password"))
 		g.confirm.OnSubmitted = func(string) { g.submit() }
@@ -55,37 +64,41 @@ func (a *App) showGate() {
 
 		// Explicit line breaks: a wrapping label has no usable minimum
 		// height inside a centred layout.
-		intro := widget.NewLabel(i18n.Tf(
-			"Choose a master password of at least %d characters.\nIt is never stored and cannot be recovered.\nIf you forget it, the vault is lost.",
+		intro := muted(i18n.Tf("Choose a master password of at least %d characters.\nIt is never stored, so it cannot be recovered.",
 			vault.MinPasswordLength))
 		intro.Alignment = fyne.TextAlignCenter
-		intro.Importance = widget.LowImportance
-		column.Add(intro)
-		column.Add(g.password)
-		column.Add(g.confirm)
+		intro.SizeName = theme.SizeNameCaptionText
+		form.Add(intro)
+		form.Add(g.password)
+		form.Add(g.confirm)
 	} else {
+		subtitle.SetText(i18n.T("Welcome back"))
 		g.password.OnSubmitted = func(string) { g.submit() }
-		g.button = widget.NewButton(i18n.T("Unlock"), func() { g.submit() })
+		g.button = widget.NewButtonWithIcon(i18n.T("Unlock"), lockIcon, func() { g.submit() })
 		g.submit = func() { a.submitUnlock(g) }
-		column.Add(g.password)
+		form.Add(g.password)
 	}
 	g.button.Importance = widget.HighImportance
-	column.Add(g.button)
-	column.Add(g.status)
-	column.Add(container.NewCenter(a.languageSelect()))
+	form.Add(g.button)
+	form.Add(g.status)
+
+	language := segmented(languageNames(), languageIndex(), func(i int) { a.setLanguage(i18n.Languages[i]) })
 
 	a.gate = g
-	a.win.SetContent(container.NewCenter(column))
+	a.win.SetContent(container.NewCenter(container.NewVBox(
+		card(form),
+		container.NewCenter(language),
+	)))
 	a.win.Canvas().Focus(g.password)
 }
 
 func (a *App) submitCreate(g *gate) {
 	switch {
 	case utf8.RuneCountInString(g.password.Text) < vault.MinPasswordLength:
-		g.status.SetText(i18n.Tf("Use at least %d characters.", vault.MinPasswordLength))
+		g.say(i18n.Tf("Use at least %d characters.", vault.MinPasswordLength))
 		return
 	case g.password.Text != g.confirm.Text:
-		g.status.SetText(i18n.T("The two passwords do not match."))
+		g.say(i18n.T("The two passwords do not match."))
 		return
 	}
 	secret := []byte(g.password.Text)
@@ -118,7 +131,8 @@ func (a *App) derive(g *gate, message string, open func() (*vault.Vault, error))
 		g.confirm.Disable()
 	}
 	g.button.Disable()
-	g.status.SetText(message)
+	g.status.Importance = widget.LowImportance
+	g.say(message)
 
 	go func() {
 		v, err := open()
@@ -130,7 +144,8 @@ func (a *App) derive(g *gate, message string, open func() (*vault.Vault, error))
 					g.confirm.Enable()
 				}
 				g.button.Enable()
-				g.status.SetText(gateMessage(err))
+				g.status.Importance = widget.DangerImportance
+				g.say(gateMessage(err))
 				a.win.Canvas().Focus(g.password)
 				return
 			}

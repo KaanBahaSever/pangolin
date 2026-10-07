@@ -30,7 +30,10 @@ const (
 	defaultClipboardSeconds = 20
 )
 
-var logo = fyne.NewStaticResource("logo.svg", assets.LogoSVG)
+var (
+	logo = fyne.NewStaticResource("logo.svg", assets.LogoSVG) // app icon
+	mark = fyne.NewStaticResource("mark.svg", assets.MarkSVG) // in the interface
+)
 
 // App is the application window and the session behind it.
 type App struct {
@@ -68,8 +71,9 @@ func New(fa fyne.App, dir string, params crypto.KDFParams) *App {
 	fa.SetIcon(logo)
 
 	a.win = fa.NewWindow("Pangolin")
-	a.win.Resize(fyne.NewSize(900, 580))
+	a.win.Resize(fyne.NewSize(980, 640))
 	a.win.SetMaster()
+	a.win.SetPadded(false) // the screens bring their own margins
 	// Lock while the event loop still runs, so the clipboard can be cleared.
 	a.win.SetCloseIntercept(func() {
 		a.lock()
@@ -105,8 +109,23 @@ func (a *App) setLanguage(l i18n.Lang) {
 		a.showGate()
 		return
 	}
+	// Rebuild the vault screen in the new language, on the same page.
+	old := a.view
 	a.view = newVaultView(a)
 	a.win.SetContent(a.view.content)
+	switch {
+	case old.page == pageSettings:
+		a.view.showSettings()
+	case old.selected != "":
+		a.view.show(old.selected)
+	}
+}
+
+// showSettings opens the settings page.
+func (a *App) showSettings() {
+	if a.view != nil {
+		a.view.showSettings()
+	}
 }
 
 // setTheme stores the theme mode and applies it at once.

@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -29,7 +30,6 @@ type editor struct {
 func (vv *vaultView) newEntry() {
 	vv.a.touch()
 	vv.list.UnselectAll()
-	vv.selected = ""
 	vv.showEditor(&editor{}, i18n.T("New entry"))
 }
 
@@ -43,19 +43,26 @@ func (vv *vaultView) editEntry(s vault.Summary) {
 	vv.secret(s.ID, vault.FieldNotes, e.notes.SetText)
 }
 
-func (vv *vaultView) showEditor(e *editor, heading string) {
+// labelled puts a caption above a field.
+func labelled(name string, field fyne.CanvasObject) fyne.CanvasObject {
+	return container.New(layout.NewCustomPaddedVBoxLayout(0), caption(name), field)
+}
+
+func (vv *vaultView) showEditor(e *editor, title string) {
 	a := vv.a
-	vv.status.SetText("")
 	touch := func(string) { a.touch() }
 
 	e.title = widget.NewEntry()
 	e.title.SetPlaceHolder(i18n.T("e.g. GitHub"))
 	e.username = widget.NewEntry()
+	e.username.SetPlaceHolder(i18n.T("e.g. name@example.com"))
 	e.url = widget.NewEntry()
+	e.url.SetPlaceHolder(i18n.T("e.g. github.com"))
 	e.password = widget.NewPasswordEntry()
 	e.notes = widget.NewMultiLineEntry()
 	e.notes.Wrapping = fyne.TextWrapWord
-	e.notes.SetMinRowsVisible(4)
+	e.notes.SetMinRowsVisible(3)
+	e.notes.SetPlaceHolder(i18n.T("Recovery codes, security questions…"))
 	for _, entry := range []*widget.Entry{e.title, e.username, e.url, e.password, e.notes} {
 		entry.OnChanged = touch
 	}
@@ -85,7 +92,7 @@ func (vv *vaultView) showEditor(e *editor, heading string) {
 			err = a.vault.Update(entry)
 		}
 		if errors.Is(err, vault.ErrInvalidEntry) {
-			vv.status.SetText(i18n.T("An entry needs a title."))
+			vv.say(i18n.T("An entry needs a title."))
 			a.win.Canvas().Focus(e.title)
 			return
 		}
@@ -97,7 +104,7 @@ func (vv *vaultView) showEditor(e *editor, heading string) {
 		e.notes.SetText("")
 		vv.reload()
 		vv.show(id)
-		vv.status.SetText(i18n.T("Saved."))
+		vv.say(i18n.T("Saved."))
 	}
 	cancel := func() {
 		a.touch()
@@ -110,62 +117,79 @@ func (vv *vaultView) showEditor(e *editor, heading string) {
 		vv.showPlaceholder()
 	}
 
-	form := widget.NewForm(
-		widget.NewFormItem(i18n.T("Title"), e.title),
-		widget.NewFormItem(i18n.T("Username"), e.username),
-		widget.NewFormItem(i18n.T("Password"), container.NewBorder(nil, nil, nil, generate, e.password)),
-		widget.NewFormItem(i18n.T("URL"), e.url),
-		widget.NewFormItem(i18n.T("Notes"), e.notes),
-	)
-	saveButton := widget.NewButtonWithIcon(i18n.T("Save"), theme.DocumentSaveIcon(), e.save)
+	saveButton := widget.NewButtonWithIcon(i18n.T("Save"), theme.ConfirmIcon(), e.save)
 	saveButton.Importance = widget.HighImportance
-	buttons := container.NewHBox(widget.NewButton(i18n.T("Cancel"), cancel), saveButton)
+	cancelButton := widget.NewButton(i18n.T("Cancel"), cancel)
+	cancelButton.Importance = widget.LowImportance
 
-	title := widget.NewLabelWithStyle(heading, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	title.SizeName = theme.SizeNameSubHeadingText
+	form := card(
+		labelled(i18n.T("Title"), e.title),
+		labelled(i18n.T("Username"), e.username),
+		labelled(i18n.T("Password"), container.NewBorder(nil, nil, nil, generate, e.password)),
+		labelled(i18n.T("Website"), e.url),
+		labelled(i18n.T("Notes"), e.notes),
+	)
+	buttons := container.NewHBox(layout.NewSpacer(), cancelButton, saveButton)
 
-	vv.setPane(container.NewBorder(title, container.NewBorder(nil, nil, nil, buttons), nil, nil,
-		container.NewVScroll(form)))
+	vv.setPage(pageEditor, scrollPage(heading(title), form, buttons))
 	vv.editor = e
 	a.win.Canvas().Focus(e.title)
 }
 
-// showGenerator asks for length and character classes and writes a new
-// password into target.
+// showGenerator offers a freshly generated password, with its length and
+// character classes adjustable, and writes it into target on "Use".
 func (a *App) showGenerator(target *widget.Entry) {
 	opts := generator.DefaultOptions()
 
-	length := widget.NewLabel("")
+	preview := widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Monospace: true})
+	preview.Wrapping = fyne.TextWrapBreak
+	current := ""
+	regenerate := func() {
+		p, err := generator.Generate(opts)
+		if err != nil {
+			current = ""
+			preview.SetText(i18n.T("Select at least one kind of character."))
+			return
+		}
+		current = p
+		preview.SetText(p)
+	}
+
+	length := caption("")
 	slider := widget.NewSlider(generator.MinLength, 64)
 	slider.Step = 1
+	slider.SetValue(float64(opts.Length))
 	slider.OnChanged = func(v float64) {
 		opts.Length = int(v)
 		length.SetText(i18n.Tf("%d characters", opts.Length))
+		regenerate()
 	}
-	slider.SetValue(float64(opts.Length))
-	slider.OnChanged(slider.Value)
+	length.SetText(i18n.Tf("%d characters", opts.Length))
 
 	check := func(label string, field *bool) *widget.Check {
-		c := widget.NewCheck(label, func(on bool) { *field = on })
+		c := widget.NewCheck(label, nil)
 		c.SetChecked(*field)
+		c.OnChanged = func(on bool) {
+			*field = on
+			regenerate()
+		}
 		return c
 	}
+	regenerate()
+
 	content := container.NewVBox(
+		card(container.NewBorder(nil, nil, nil, flatButton(theme.ViewRefreshIcon(), regenerate), preview)),
 		length, slider,
 		container.NewGridWithColumns(2,
 			check("a–z", &opts.Lower), check("A–Z", &opts.Upper),
 			check("0–9", &opts.Digits), check(i18n.T("Symbols"), &opts.Symbols)),
 	)
-	dialog.ShowCustomConfirm(i18n.T("Generate password"), i18n.T("Use"), i18n.T("Cancel"), content, func(ok bool) {
+	d := dialog.NewCustomConfirm(i18n.T("Generate password"), i18n.T("Use"), i18n.T("Cancel"), content, func(ok bool) {
 		a.touch()
-		if !ok {
-			return
+		if ok && current != "" {
+			target.SetText(current)
 		}
-		password, err := generator.Generate(opts)
-		if err != nil {
-			a.showInfo(i18n.T("Generate password"), i18n.T("Select at least one kind of character."))
-			return
-		}
-		target.SetText(password)
 	}, a.win)
+	d.Resize(fyne.NewSize(420, 0))
+	d.Show()
 }

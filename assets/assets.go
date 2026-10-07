@@ -7,3 +7,8 @@ import _ "embed"
 //
 //go:embed logo.svg
 var LogoSVG []byte
+
+// MarkSVG is the logo without its tile, for use inside the interface.
+//
+//go:embed mark.svg
+var MarkSVG []byte
