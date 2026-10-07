@@ -35,8 +35,8 @@ stored anywhere.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: light)" srcset="docs/screenshot-light.png">
-    <img src="docs/screenshot-dark.png" width="720" alt="The Pangolin window: a searchable list of entries on the left and one entry on the right with its password masked">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-en-dark.png">
+    <img src="docs/screenshot-en-light.png" width="760" alt="The Pangolin window: a searchable list of entries on the left and one entry on the right with its password masked">
   </picture>
 </p>
 
@@ -129,6 +129,14 @@ regenerate it with:
 go run github.com/akavel/rsrc@v0.10.2 -ico assets/icon.ico -arch amd64 -o cmd/pangolin/rsrc_windows_amd64.syso
 ```
 
+The screenshots in `docs/` are rendered from the app itself, in both languages
+and both themes, and then framed:
+
+```bash
+SHOT_DIR=shots go test -tags screenshots ./internal/ui -run TestScreenshots
+python tools/screenshots/frame.py shots docs
+```
+
 Run the tests:
 
 ```bash
@@ -188,6 +196,7 @@ internal/generator/   password generator
 internal/session/     idle auto-lock, clipboard guard
 internal/i18n/        English and Turkish
 internal/ui/          screens and theme
+tools/screenshots/    renders and frames the screenshots
 packaging/            release packaging for each platform
 ```
 

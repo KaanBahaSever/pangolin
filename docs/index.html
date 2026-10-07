@@ -7,7 +7,7 @@
 <meta name="description" content="Pangolin is a free, open-source, local-first password keeper for Windows, macOS and Linux. No account, no server, no network.">
 <meta property="og:title" content="Pangolin">
 <meta property="og:description" content="A local-first password keeper that curls up around your secrets.">
-<meta property="og:image" content="https://kaanbahasever.github.io/pangolin/screenshot-dark.png">
+<meta property="og:image" content="https://kaanbahasever.github.io/pangolin/screenshot-en-dark.png">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <style>
   /* Dark is the default; light applies when the system asks for it or the
@@ -98,7 +98,8 @@
   .small { font-size: 15px; color: var(--muted); margin-top: 16px; }
 
   /* Screenshot */
-  .shot { display: block; width: 100%; height: auto; border-radius: var(--radius); border: 2px solid var(--raised); box-shadow: 0 24px 60px var(--shadow); }
+  /* The window frame and its shadow are part of the image. */
+  .shot { display: block; width: calc(100% + 32px); max-width: none; height: auto; margin: 0 -16px; }
   .shot.light { display: none; }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) .shot.dark { display: none; }
@@ -178,9 +179,9 @@
     <p class="small" data-i18n="free">Free and open source. No account, no server, no network.</p>
   </header>
 
-  <img class="shot dark" src="screenshot-dark.png" width="900" height="580"
+  <img class="shot dark" src="screenshot-en-dark.png" width="2104" height="1500"
        alt="The Pangolin window: a searchable list of entries on the left, and one entry on the right with its password hidden">
-  <img class="shot light" src="screenshot-light.png" width="900" height="580"
+  <img class="shot light" src="screenshot-en-light.png" width="2104" height="1500"
        alt="The Pangolin window: a searchable list of entries on the left, and one entry on the right with its password hidden">
 
   <section>
@@ -355,6 +356,10 @@
       main.textContent = lang === "tr" ? osNames[os] + forOS.tr : forOS.en + osNames[os];
     }
     document.documentElement.lang = lang;
+    // Screenshots of the app in the same language.
+    document.querySelectorAll(".shot").forEach(function (img) {
+      img.src = "screenshot-" + lang + "-" + (img.classList.contains("light") ? "light" : "dark") + ".png";
+    });
     document.querySelectorAll(".lang button").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
     });
