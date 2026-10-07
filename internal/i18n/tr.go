@@ -94,6 +94,15 @@ var tr = map[string]string{
 	"Pangolin %s":                           "Pangolin %s",
 	"Free and open source, MIT License.":    "Ücretsiz ve açık kaynak, MIT Lisansı.",
 	"Vault folder":                          "Kasa klasörü",
+	"Updates":                               "Güncellemeler",
+	"Pangolin connects to GitHub only when you press Check.": "Pangolin yalnızca Denetle'ye bastığınızda GitHub'a bağlanır.",
+	"Check":     "Denetle",
+	"Checking…": "Denetleniyor…",
+	"Could not check for updates. Are you online?": "Güncellemeler denetlenemedi. İnternete bağlı mısınız?",
+	"Pangolin %s is available.":                    "Pangolin %s yayımlandı.",
+	"Download":                                     "İndir",
+	"This is a development build.":                 "Bu bir geliştirme sürümü.",
+	"You have the latest version.":                 "En son sürümü kullanıyorsunuz.",
 
 	// Dialogs
 	"OK":    "Tamam",

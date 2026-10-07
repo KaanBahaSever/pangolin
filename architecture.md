@@ -1,7 +1,8 @@
 # Pangolin — Architecture
 
 Pangolin is a local-first, single-user password keeper for Windows, macOS and Linux.
-It has no server, no account, no telemetry and makes no network connections.
+It has no server, no account and no telemetry. Its only network request is an
+update check that the user starts by hand (§8).
 
 This document is the source of truth for the design. The code in this repository
 implements it; where the code and this document disagree, that is a bug.
@@ -388,7 +389,13 @@ the file was at fault.
 - Delete asks for confirmation. Nothing else does.
 - Settings is a page with three sections: Appearance (language, theme),
   Security (auto-lock delay, clipboard delay, master password) and About
-  (version, vault folder).
+  (version, vault folder, update check).
+- The update check is the only network code (`internal/update`). It runs
+  only when the user presses Check: one HTTPS GET to the GitHub releases API,
+  carrying nothing but the running version in the User-Agent. The answer is
+  read for a version number only. "Download" opens a fixed release page in
+  the browser; nothing in the answer decides what is opened, and Pangolin
+  never downloads or installs anything itself.
 - English and Turkish. The first run follows the system language; the choice
   can be changed on the first screen or in the settings and is remembered.
   Search is case-insensitive in both, including the Turkish dotted and
@@ -409,6 +416,7 @@ internal/crypto/      KDF, AEAD, key derivation, locked buffers
 internal/vault/       header, database, entries, lock state
 internal/generator/   password generator
 internal/session/     idle auto-lock, clipboard guard
+internal/update/      manual update check (the only network code)
 internal/i18n/        interface translations (English, Turkish)
 internal/ui/          Fyne screens and theme
 ```

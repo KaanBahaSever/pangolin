@@ -21,7 +21,7 @@
   <img alt="Platforms: Windows, macOS, Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-141A2E">
   <img alt="Key derivation: Argon2id" src="https://img.shields.io/badge/KDF-Argon2id-E8A23E">
   <img alt="Encryption: SQLCipher and XChaCha20-Poly1305" src="https://img.shields.io/badge/encryption-SQLCipher%20%2B%20XChaCha20--Poly1305-E8A23E">
-  <img alt="No network access" src="https://img.shields.io/badge/network-none-2EA44F">
+  <img alt="Network: only when you check for updates" src="https://img.shields.io/badge/network-only%20on%20request-2EA44F">
   <img alt="Languages: English, Türkçe" src="https://img.shields.io/badge/lang-English%20%7C%20T%C3%BCrk%C3%A7e-141A2E">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
 </p>
@@ -29,8 +29,9 @@
 ---
 
 Pangolin keeps your passwords in an encrypted vault on your own computer.
-There is no account, no server and no sync; the application never opens a
-network connection. One master password unlocks the vault, and it is never
+There is no account, no server and no sync. Pangolin goes online for exactly
+one thing, and only when you ask: the "Check" button for updates in the
+settings, which asks GitHub for the latest version number. One master password unlocks the vault, and it is never
 stored anywhere.
 
 <p align="center">
@@ -56,6 +57,7 @@ stored anywhere.
 - **Password generator** with length and character-class options.
 - **English and Turkish** interface, switchable at any time.
 - **Light and dark** themes; follows the system by default.
+- **Update check on request.** One button in the settings; nothing runs in the background.
 - **Nothing to lose on a crash.** Every change is written immediately.
 
 ## Download
@@ -195,6 +197,7 @@ internal/vault/       key slot, database, entries
 internal/generator/   password generator
 internal/session/     idle auto-lock, clipboard guard
 internal/i18n/        English and Turkish
+internal/update/      the update check, the only network code
 internal/ui/          screens and theme
 tools/screenshots/    renders and frames the screenshots
 packaging/            release packaging for each platform

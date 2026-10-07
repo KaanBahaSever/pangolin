@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"context"
 	"errors"
+	"net/url"
 	"unicode/utf8"
 
 	"fyne.io/fyne/v2"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/KaanBahaSever/pangolin/internal/crypto"
 	"github.com/KaanBahaSever/pangolin/internal/i18n"
+	"github.com/KaanBahaSever/pangolin/internal/update"
 	"github.com/KaanBahaSever/pangolin/internal/vault"
 	"github.com/KaanBahaSever/pangolin/internal/version"
 )
@@ -186,6 +189,7 @@ func (vv *vaultView) showSettings() {
 		container.NewBorder(nil, nil, logoImage(56), nil,
 			container.New(layout.NewCustomPaddedVBoxLayout(-theme.Padding()*3), name, license)),
 		container.NewVBox(caption(i18n.T("Vault folder")), folder),
+		a.updateRow(),
 	)
 
 	vv.setPage(pageSettings, scrollPage(heading(i18n.T("Settings")), appearance, security, about))
@@ -224,4 +228,49 @@ func (a *App) changePassword(current, next []byte, done func()) {
 			}
 		})
 	}()
+}
+
+// updateRow is the "Updates" row of the About card. Pressing Check is the
+// only way Pangolin ever goes online.
+func (a *App) updateRow() fyne.CanvasObject {
+	status := muted(i18n.T("Pangolin connects to GitHub only when you press Check."))
+	status.SizeName = theme.SizeNameCaptionText
+	status.Wrapping = fyne.TextWrapWord
+	title := widget.NewLabelWithStyle(i18n.T("Updates"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+
+	actions := container.NewHBox()
+	var check *widget.Button
+	check = widget.NewButton(i18n.T("Check"), func() {
+		a.touch()
+		check.Disable()
+		status.SetText(i18n.T("Checking…"))
+		current := version.Version
+		go func() {
+			latest, err := update.Latest(context.Background(), update.LatestAPI, current)
+			fyne.Do(func() {
+				check.Enable()
+				switch {
+				case err != nil:
+					status.SetText(i18n.T("Could not check for updates. Are you online?"))
+				case update.Newer(current, latest):
+					status.SetText(i18n.Tf("Pangolin %s is available.", latest))
+					download := widget.NewButtonWithIcon(i18n.T("Download"), theme.DownloadIcon(), func() {
+						u, _ := url.Parse(update.DownloadPage)
+						a.fyne.OpenURL(u)
+					})
+					download.Importance = widget.HighImportance
+					actions.Objects = []fyne.CanvasObject{download}
+					actions.Refresh()
+				case !update.IsRelease(current):
+					status.SetText(i18n.T("This is a development build."))
+				default:
+					status.SetText(i18n.T("You have the latest version."))
+				}
+			})
+		}()
+	})
+	actions.Add(check)
+
+	text := container.New(layout.NewCustomPaddedVBoxLayout(-theme.Padding()*3), title, status)
+	return container.NewBorder(nil, nil, nil, container.NewCenter(actions), text)
 }
