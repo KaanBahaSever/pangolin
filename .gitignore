@@ -30,6 +30,9 @@ vault.db-shm
 vault.db.orphan-*
 vault.header
 vault.header.*.tmp
+# ...except the 1.0 vault the compatibility test opens (test password only)
+!/internal/vault/testdata/v1/vault.db
+!/internal/vault/testdata/v1/vault.header
 *.vault
 *.key
 *.pem
@@ -57,3 +60,4 @@ desktop.ini
 *.log
 *.bak
 /tmp/
+shots/
