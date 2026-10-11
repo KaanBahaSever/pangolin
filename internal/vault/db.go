@@ -3,13 +3,17 @@ package vault
 import (
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	_ "github.com/mutecomm/go-sqlcipher/v4" // registers the "sqlite3" driver
 )
 
 const schemaVersion = 1
+
+var errEmptyDatabase = errors.New("vault: the database is empty or damaged")
 
 const schemaV1 = `
 CREATE TABLE entries (
@@ -28,7 +32,17 @@ CREATE TABLE entries (
 //
 // The driver only accepts the key as part of a string, so the database key
 // passes through memory that cannot be wiped. See architecture.md §7.4.
-func openDB(path string, key []byte) (*sql.DB, error) {
+//
+// create is true only when a new vault is being made. Opening an existing
+// vault never creates the schema: a database without one is empty or
+// damaged (a truncated copy, a sync conflict) and must not be mistaken for a
+// vault with no entries.
+func openDB(path string, key []byte, create bool) (*sql.DB, error) {
+	// The driver splits its connection string at the first "?". A "?" in the
+	// path would cut the key off and create an unencrypted database.
+	if strings.ContainsRune(path, '?') {
+		return nil, errors.New(`vault: the vault folder's path must not contain "?"`)
+	}
 	dsn := fmt.Sprintf("%s?_pragma_key=x'%s'&_pragma_cipher_page_size=4096", path, hex.EncodeToString(key))
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
@@ -54,7 +68,7 @@ func openDB(path string, key []byte) (*sql.DB, error) {
 		rows.Close()
 	}
 
-	if err := migrate(db); err != nil {
+	if err := migrate(db, create); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -64,7 +78,7 @@ func openDB(path string, key []byte) (*sql.DB, error) {
 	return db, nil
 }
 
-func migrate(db *sql.DB) error {
+func migrate(db *sql.DB, create bool) error {
 	var version int
 	// Reading user_version is also the first real read of the file, so a
 	// wrong key or a damaged database surfaces here.
@@ -76,6 +90,9 @@ func migrate(db *sql.DB) error {
 	}
 	if version == schemaVersion {
 		return nil
+	}
+	if !create {
+		return errEmptyDatabase
 	}
 
 	tx, err := db.Begin()

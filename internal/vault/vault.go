@@ -3,6 +3,7 @@
 package vault
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/awnumar/memguard"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/KaanBahaSever/pangolin/internal/crypto"
 )
@@ -31,6 +33,8 @@ var (
 	ErrLocked = errors.New("vault: locked")
 	// ErrWeakPassword means the master password is shorter than MinPasswordLength.
 	ErrWeakPassword = fmt.Errorf("vault: master password must be at least %d characters", MinPasswordLength)
+	// ErrMissingDatabase means the header is there but vault.db is not.
+	ErrMissingDatabase = errors.New("vault: the database file is missing")
 	// ErrEntryNotFound means no entry has the requested ID.
 	ErrEntryNotFound = errors.New("vault: entry not found")
 	// ErrInvalidEntry means an entry failed validation.
@@ -40,6 +44,7 @@ var (
 // Vault is an unlocked vault. It is safe for concurrent use. Close it to lock.
 type Vault struct {
 	mu       sync.Mutex
+	headerMu sync.Mutex // serialises header rewrites; held without mu
 	dir      string
 	db       *sql.DB
 	master   *memguard.LockedBuffer
@@ -74,13 +79,15 @@ func Create(dir string, password []byte, params crypto.KDFParams) (*Vault, error
 		}
 	}
 
+	pw := nfc(password)
+	defer crypto.Wipe(pw)
 	master := crypto.NewMasterKey()
-	h, err := newHeader(password, master.Bytes(), params)
+	h, err := newHeader(pw, master.Bytes(), params)
 	if err != nil {
 		master.Destroy()
 		return nil, err
 	}
-	v, err := open(dir, master)
+	v, err := open(dir, master, true)
 	if err != nil {
 		return nil, err
 	}
@@ -99,17 +106,44 @@ func Open(dir string, password []byte) (*Vault, error) {
 		return nil, err
 	}
 	if _, err := os.Stat(filepath.Join(dir, dbFile)); err != nil {
-		return nil, fmt.Errorf("vault: database file is missing: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrMissingDatabase, err)
 	}
-	master, err := h.unwrap(password)
+	master, err := unwrap(h, password)
 	if err != nil {
 		return nil, err
 	}
-	return open(dir, master)
+	v, err := open(dir, master, false)
+	if err != nil {
+		// The password was right but the database is not usable. This is
+		// reported like a wrong password, so failures do not tell an
+		// observer which of the two was at fault; the cause stays in the
+		// error chain.
+		return nil, fmt.Errorf("%w (%v)", ErrUnlock, err)
+	}
+	return v, nil
+}
+
+// nfc returns a copy of password in Unicode normalisation form C, so that a
+// password with "ş" or "é" gives the same bytes however the keyboard or the
+// operating system composed those letters. The caller wipes the copy.
+func nfc(password []byte) []byte {
+	return norm.NFC.Append(make([]byte, 0, len(password)), password...)
+}
+
+// unwrap recovers the master key. It tries the password in NFC first and then
+// exactly as typed, because vaults made before 1.3 used the raw bytes.
+func unwrap(h *header, password []byte) (*memguard.LockedBuffer, error) {
+	pw := nfc(password)
+	defer crypto.Wipe(pw)
+	master, err := h.unwrap(pw)
+	if errors.Is(err, ErrUnlock) && !bytes.Equal(pw, password) {
+		return h.unwrap(password)
+	}
+	return master, err
 }
 
 // open takes ownership of master.
-func open(dir string, master *memguard.LockedBuffer) (*Vault, error) {
+func open(dir string, master *memguard.LockedBuffer, create bool) (*Vault, error) {
 	dbKey, err := crypto.DeriveSubkey(master.Bytes(), crypto.InfoDatabase)
 	if err != nil {
 		master.Destroy()
@@ -122,7 +156,7 @@ func open(dir string, master *memguard.LockedBuffer) (*Vault, error) {
 		master.Destroy()
 		return nil, err
 	}
-	db, err := openDB(filepath.Join(dir, dbFile), dbKey.Bytes())
+	db, err := openDB(filepath.Join(dir, dbFile), dbKey.Bytes(), create)
 	if err != nil {
 		master.Destroy()
 		fieldKey.Destroy()
@@ -149,26 +183,38 @@ func (v *Vault) Close() error {
 // ChangePassword re-wraps the master key under a new password. The current
 // password is required again, so an unattended unlocked session is not enough
 // to take over the vault.
+//
+// The two key derivations take a while, so they run without holding the
+// vault's lock: locking the vault meanwhile does not have to wait for them.
 func (v *Vault) ChangePassword(current, next []byte) error {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-	if v.db == nil {
-		return ErrLocked
-	}
 	if utf8.RuneCount(next) < MinPasswordLength {
 		return ErrWeakPassword
 	}
+	v.mu.Lock()
+	if v.db == nil {
+		v.mu.Unlock()
+		return ErrLocked
+	}
+	master := memguard.NewBuffer(crypto.KeySize)
+	master.Copy(v.master.Bytes())
+	v.mu.Unlock()
+	defer master.Destroy()
+
+	v.headerMu.Lock()
+	defer v.headerMu.Unlock()
 	old, err := readHeader(v.dir)
 	if err != nil {
 		return err
 	}
-	check, err := old.unwrap(current)
+	check, err := unwrap(old, current)
 	if err != nil {
 		return err
 	}
 	check.Destroy()
 
-	h, err := newHeader(next, v.master.Bytes(), old.params())
+	pw := nfc(next)
+	defer crypto.Wipe(pw)
+	h, err := newHeader(pw, master.Bytes(), old.params())
 	if err != nil {
 		return err
 	}

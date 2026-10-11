@@ -20,14 +20,16 @@ const (
 )
 
 // Bounds for KDF parameters read from a vault header. They stop a manipulated
-// header from requesting an absurd allocation or a trivially weak derivation.
+// header from requesting a trivially weak derivation, or one so large that
+// trying a password exhausts memory or takes minutes. The upper bounds leave
+// room to raise the defaults (256 MiB, 4 passes) a few times over.
 const (
 	minMemoryKiB = 8 * 1024
-	maxMemoryKiB = 4 * 1024 * 1024
+	maxMemoryKiB = 1024 * 1024
 	minTime      = 1
-	maxTime      = 64
+	maxTime      = 16
 	minThreads   = 1
-	maxThreads   = 64
+	maxThreads   = 16
 )
 
 // KDFParams are the Argon2id cost parameters.

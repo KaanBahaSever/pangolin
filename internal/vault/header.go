@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/awnumar/memguard"
-	"golang.org/x/crypto/chacha20poly1305"
 
 	"github.com/KaanBahaSever/pangolin/internal/crypto"
 )
@@ -85,8 +84,8 @@ func newHeader(password, master []byte, p crypto.KDFParams) (*header, error) {
 	if err != nil {
 		return nil, err
 	}
-	h.Wrap.Nonce = blob[:chacha20poly1305.NonceSizeX]
-	h.Wrap.Ciphertext = blob[chacha20poly1305.NonceSizeX:]
+	h.Wrap.Nonce = blob[:crypto.NonceSize]
+	h.Wrap.Ciphertext = blob[crypto.NonceSize:]
 	return h, nil
 }
 

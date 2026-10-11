@@ -20,7 +20,7 @@ const (
 )
 
 // sealedEmpty is the size of a sealed empty value: nonce plus tag.
-const sealedEmpty = 24 + 16
+const sealedEmpty = crypto.NonceSize + crypto.Overhead
 
 // Entry is a full entry as supplied by the caller for Add and Update.
 // Password and Notes are plaintext; the vault seals them before storing.
@@ -44,7 +44,7 @@ type Summary struct {
 }
 
 // turkishI maps the dotted and dotless I of Turkish onto plain "i", so that
-// "istanbul" finds "İstanbul" and "isik" finds "IŞIK" whatever the locale.
+// "istanbul" finds "İstanbul" and "ışık" finds "IŞIK" whatever the locale.
 var turkishI = strings.NewReplacer("İ", "i", "ı", "i")
 
 // fold prepares a string for case-insensitive comparison.

@@ -361,12 +361,81 @@ func TestLockedVaultRefusesEverything(t *testing.T) {
 	}
 }
 
+func TestOpenRejectsEmptyDatabase(t *testing.T) {
+	v, dir := newVault(t)
+	mustAdd(t, v, Entry{Title: "a", Password: []byte("p")})
+	v.Close()
+
+	// A sync conflict or an interrupted copy can leave an empty file behind.
+	if err := os.WriteFile(filepath.Join(dir, dbFile), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(dir, testPass); !errors.Is(err, ErrUnlock) {
+		t.Fatalf("an empty database opened: err = %v", err)
+	}
+	if info, _ := os.Stat(filepath.Join(dir, dbFile)); info.Size() != 0 {
+		t.Fatal("opening wrote a new schema into the empty database")
+	}
+}
+
+func TestPathWithQuestionMarkIsRefused(t *testing.T) {
+	if _, err := openDB(filepath.Join(t.TempDir(), "my?vault.db"), crypto.RandomBytes(crypto.KeySize), true); err == nil {
+		t.Fatal(`a path with "?" was accepted`)
+	}
+}
+
+// The same password must open the vault however its letters were composed.
+func TestPasswordUnicodeNormalisation(t *testing.T) {
+	composed := []byte("g\u00fc\u00e7l\u00fc \u015fifre 2026")       // NFC: ü, ç, ş as single letters
+	decomposed := []byte("gu\u0308c\u0327lu\u0308 s\u0327ifre 2026") // NFD: letter + combining mark
+
+	dir := t.TempDir()
+	v, err := Create(dir, decomposed, testParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v.Close()
+	for name, pw := range map[string][]byte{"composed": composed, "decomposed": decomposed} {
+		v, err := Open(dir, pw)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		v.Close()
+	}
+
+	// A vault from before 1.3 has its key wrapped under the raw bytes.
+	legacy := t.TempDir()
+	v, err = Create(legacy, composed, testParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v.Close()
+	h, _ := readHeader(legacy)
+	master, err := unwrap(h, composed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := newHeader(decomposed, master.Bytes(), testParams)
+	master.Destroy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeHeader(legacy, raw); err != nil {
+		t.Fatal(err)
+	}
+	v, err = Open(legacy, decomposed)
+	if err != nil {
+		t.Fatalf("legacy vault with a decomposed password: %v", err)
+	}
+	v.Close()
+}
+
 func TestOpenWithMissingDatabase(t *testing.T) {
 	v, dir := newVault(t)
 	v.Close()
 	os.Remove(filepath.Join(dir, dbFile))
-	if _, err := Open(dir, testPass); err == nil {
-		t.Fatal("opened a vault whose database is missing")
+	if _, err := Open(dir, testPass); !errors.Is(err, ErrMissingDatabase) {
+		t.Fatalf("opened a vault whose database is missing: err = %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, dbFile)); err == nil {
 		t.Fatal("Open created a new empty database")

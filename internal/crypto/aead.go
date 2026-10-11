@@ -6,6 +6,13 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
+// Layout of a sealed blob: NonceSize bytes of nonce, the ciphertext, then
+// Overhead bytes of authentication tag.
+const (
+	NonceSize = chacha20poly1305.NonceSizeX
+	Overhead  = chacha20poly1305.Overhead
+)
+
 // ErrOpen is returned when a ciphertext fails authentication. It deliberately
 // carries no detail about why.
 var ErrOpen = errors.New("crypto: message authentication failed")

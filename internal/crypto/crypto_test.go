@@ -93,6 +93,8 @@ func TestDeriveKEKRejectsBadInput(t *testing.T) {
 		{Time: 1, MemoryKiB: 1 << 30, Threads: 1},
 		{Time: 1, MemoryKiB: 8 * 1024, Threads: 0},
 		{Time: 1000, MemoryKiB: 8 * 1024, Threads: 1},
+		{Time: 1, MemoryKiB: 2 * 1024 * 1024, Threads: 1}, // 2 GiB
+		{Time: 64, MemoryKiB: 8 * 1024, Threads: 1},
 	}
 	for _, p := range bad {
 		if _, err := DeriveKEK([]byte("pw"), salt, p); err == nil {
