@@ -35,6 +35,11 @@ type palette struct {
 
 var (
 	colorNight = color.NRGBA{R: 0x14, G: 0x1A, B: 0x2E, A: 0xFF}
+	// Text colours. Fyne draws text without hinting or ClearType, so small
+	// grey text looks soft on Windows; these keep contrast high instead of
+	// Fyne's mid-grey #565656.
+	colorInk   = color.NRGBA{R: 0x1E, G: 0x23, B: 0x36, A: 0xFF}
+	colorPaper = color.NRGBA{R: 0xF4, G: 0xF5, B: 0xFA, A: 0xFF}
 	colorAmber = color.NRGBA{R: 0xE8, G: 0xA2, B: 0x3E, A: 0xFF}
 
 	darkPalette = palette{
@@ -44,7 +49,7 @@ var (
 		border:     color.NRGBA{R: 0x29, G: 0x31, B: 0x50, A: 0xFF},
 		input:      color.NRGBA{R: 0x25, G: 0x2D, B: 0x4C, A: 0xFF},
 		raised:     color.NRGBA{R: 0x2A, G: 0x33, B: 0x52, A: 0xFF},
-		muted:      color.NRGBA{R: 0x8F, G: 0x99, B: 0xB8, A: 0xFF},
+		muted:      color.NRGBA{R: 0xA6, G: 0xAF, B: 0xC9, A: 0xFF},
 	}
 	lightPalette = palette{
 		background: color.NRGBA{R: 0xF7, G: 0xF2, B: 0xE8, A: 0xFF},
@@ -53,7 +58,7 @@ var (
 		border:     color.NRGBA{R: 0xE6, G: 0xDC, B: 0xC9, A: 0xFF},
 		input:      color.NRGBA{R: 0xF4, G: 0xEE, B: 0xE2, A: 0xFF},
 		raised:     color.NRGBA{R: 0xEC, G: 0xE2, B: 0xCE, A: 0xFF},
-		muted:      color.NRGBA{R: 0x69, G: 0x71, B: 0x8E, A: 0xFF},
+		muted:      color.NRGBA{R: 0x55, G: 0x5D, B: 0x7A, A: 0xFF},
 	}
 )
 
@@ -101,6 +106,11 @@ func (t pangolinTheme) Color(name fyne.ThemeColorName, system fyne.ThemeVariant)
 	case theme.ColorNameDisabled, theme.ColorNamePlaceHolder:
 		// Also the colour of secondary text, so it has to stay readable.
 		return p.muted
+	case theme.ColorNameForeground:
+		if variant == theme.VariantLight {
+			return colorInk
+		}
+		return colorPaper
 	case theme.ColorNamePrimary:
 		return colorAmber
 	case theme.ColorNameForegroundOnPrimary:
@@ -119,6 +129,12 @@ func (t pangolinTheme) Size(name fyne.ThemeSizeName) float32 {
 		return 10
 	case theme.SizeNameInnerPadding:
 		return 10
+	// One point above Fyne's defaults (14 and 11): unhinted text is much
+	// easier to read with a few more pixels per letter.
+	case theme.SizeNameText:
+		return 15
+	case theme.SizeNameCaptionText:
+		return 12
 	}
 	return t.Theme.Size(name)
 }

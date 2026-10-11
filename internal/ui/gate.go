@@ -59,12 +59,12 @@ func (a *App) showGate() {
 	title := widget.NewLabelWithStyle("Pangolin", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	title.SizeName = theme.SizeNameHeadingText
 
-	subtitle := muted("")
+	subtitle := widget.NewLabel("")
 	subtitle.Alignment = fyne.TextAlignCenter
 
 	// An invisible strut gives the card its width.
 	strut := canvas.NewRectangle(color.Transparent)
-	strut.SetMinSize(fyne.NewSize(360, 0))
+	strut.SetMinSize(fyne.NewSize(400, 0))
 
 	form := container.NewVBox(strut, container.NewCenter(logoImage(128)), title, subtitle)
 	if creating {
@@ -77,11 +77,11 @@ func (a *App) showGate() {
 		g.submit = func() { a.submitCreate(g) }
 
 		// Explicit line breaks: a wrapping label has no usable minimum
-		// height inside a centred layout.
+		// height inside a centred layout. Normal size, not caption: this is
+		// the one warning that matters most, and small unhinted text blurs.
 		intro := muted(i18n.Tf("Choose a master password of at least %d characters.\nIt is never stored, so it cannot be recovered.",
 			vault.MinPasswordLength))
 		intro.Alignment = fyne.TextAlignCenter
-		intro.SizeName = theme.SizeNameCaptionText
 		form.Add(intro)
 		form.Add(g.password)
 		form.Add(g.confirm)
