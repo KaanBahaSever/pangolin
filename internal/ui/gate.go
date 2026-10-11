@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -15,6 +16,19 @@ import (
 	"github.com/KaanBahaSever/pangolin/internal/i18n"
 	"github.com/KaanBahaSever/pangolin/internal/vault"
 )
+
+// wait disables the form while a key derivation runs.
+func (g *gate) wait(message string) {
+	g.password.SetText("")
+	g.password.Disable()
+	if g.confirm != nil {
+		g.confirm.SetText("")
+		g.confirm.Disable()
+	}
+	g.button.Disable()
+	g.status.Importance = widget.LowImportance
+	g.say(message)
+}
 
 // say shows a message under the button.
 func (g *gate) say(message string) {
@@ -84,11 +98,16 @@ func (a *App) showGate() {
 
 	language := segmented(languageNames(), languageIndex(), func(i int) { a.setLanguage(i18n.Languages[i]) })
 
+	// A derivation started on the previous screen is still running.
+	if a.busy.Load() {
+		g.wait(a.busyMessage)
+	}
+
 	a.gate = g
-	a.win.SetContent(container.NewCenter(container.NewVBox(
-		card(form),
-		container.NewCenter(language),
-	)))
+	// The language switch sits in the top-right corner, out of the way.
+	corner := container.New(layout.NewCustomPaddedLayout(14, 0, 0, 16),
+		container.NewHBox(layout.NewSpacer(), language))
+	a.win.SetContent(container.NewBorder(corner, nil, nil, nil, container.NewCenter(card(form))))
 	a.win.Canvas().Focus(g.password)
 }
 
@@ -124,20 +143,21 @@ func (a *App) derive(g *gate, message string, open func() (*vault.Vault, error))
 	if !a.busy.CompareAndSwap(false, true) {
 		return
 	}
-	g.password.SetText("")
-	g.password.Disable()
-	if g.confirm != nil {
-		g.confirm.SetText("")
-		g.confirm.Disable()
-	}
-	g.button.Disable()
-	g.status.Importance = widget.LowImportance
-	g.say(message)
+	a.busyMessage = message
+	g.wait(message)
 
 	go func() {
 		v, err := open()
+		if a.afterDerive != nil {
+			a.afterDerive()
+		}
 		fyne.Do(func() {
 			defer a.busy.Store(false)
+			// Switching the language rebuilds the screen meanwhile; the
+			// result belongs on the screen that is showing now.
+			if a.gate != nil {
+				g = a.gate
+			}
 			if err != nil {
 				g.password.Enable()
 				if g.confirm != nil {
@@ -160,6 +180,8 @@ func gateMessage(err error) string {
 		return i18n.T("Wrong master password, or the vault is damaged.")
 	case errors.Is(err, vault.ErrWeakPassword):
 		return i18n.Tf("Use at least %d characters.", vault.MinPasswordLength)
+	case errors.Is(err, vault.ErrMissingDatabase):
+		return i18n.T("The vault's database file (vault.db) is missing.")
 	}
-	return err.Error()
+	return i18n.Tf("The vault could not be opened: %s", err.Error())
 }

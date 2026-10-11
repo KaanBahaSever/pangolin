@@ -3,9 +3,12 @@
 package ui
 
 import (
+	"os"
+	"os/signal"
 	"runtime"
 	"runtime/debug"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -49,13 +52,37 @@ type App struct {
 	gate *gate      // the create or unlock screen, while locked
 	view *vaultView // the vault screen, while unlocked
 
-	// busy is set while a key derivation runs in the background.
-	busy atomic.Bool
+	// busy is set while a key derivation runs in the background, and
+	// busyMessage says which one.
+	busy        atomic.Bool
+	busyMessage string
+	// afterDerive, if set, runs on the background goroutine once a
+	// derivation has finished and before its result reaches the screen.
+	// Tests use it to act while a derivation is in flight.
+	afterDerive func()
 }
 
 // Run starts Pangolin with the vault in dir and blocks until the window closes.
 func Run(dir string) {
 	a := New(app.NewWithID(appID), dir, crypto.DefaultKDFParams())
+
+	// Ctrl+C or a termination signal locks first, so the keys are destroyed
+	// and the clipboard is cleared, then quits.
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		if _, ok := <-stop; ok {
+			fyne.Do(func() {
+				a.lock()
+				a.fyne.Quit()
+			})
+		}
+	}()
+	defer func() {
+		signal.Stop(stop)
+		close(stop)
+	}()
+
 	a.win.ShowAndRun()
 	// Normally the close handler has locked already; this covers other exits.
 	if a.vault != nil {
@@ -118,13 +145,6 @@ func (a *App) setLanguage(l i18n.Lang) {
 		a.view.showSettings()
 	case old.selected != "":
 		a.view.show(old.selected)
-	}
-}
-
-// showSettings opens the settings page.
-func (a *App) showSettings() {
-	if a.view != nil {
-		a.view.showSettings()
 	}
 }
 

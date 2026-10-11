@@ -76,11 +76,14 @@ func newVaultView(a *App) *vaultView {
 			// depends on which avatar is in it.
 			slot := canvas.NewRectangle(color.Transparent)
 			slot.SetMinSize(fyne.NewSize(34, 34))
-			return container.NewBorder(nil, nil, container.NewStack(slot), nil, text)
+			// The inset keeps the round avatar inside the rounded selection
+			// highlight instead of touching its edge.
+			return container.New(layout.NewCustomPaddedLayout(2, 2, 8, 6),
+				container.NewBorder(nil, nil, container.NewStack(slot), nil, text))
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			s := vv.items[i]
-			row := o.(*fyne.Container)
+			row := o.(*fyne.Container).Objects[0].(*fyne.Container)
 			text := row.Objects[0].(*fyne.Container)
 			text.Objects[0].(*widget.Label).SetText(s.Title)
 			user := text.Objects[1].(*widget.Label)
@@ -214,19 +217,23 @@ func (vv *vaultView) show(id string) {
 }
 
 // secret decrypts a field, passes it to use and wipes it.
-func (vv *vaultView) secret(id string, f vault.Field, use func(string)) {
+// It reports whether use was called.
+func (vv *vaultView) secret(id string, f vault.Field, use func(string)) bool {
 	b, err := vv.a.vault.Secret(id, f)
 	if err != nil {
 		vv.fail(err)
-		return
+		return false
 	}
 	use(string(b))
 	crypto.Wipe(b)
+	return true
 }
 
 func (vv *vaultView) copyPassword(id string) {
 	ttl := vv.a.clipboardTTL()
-	vv.secret(id, vault.FieldPassword, func(s string) { vv.a.clip.CopySecret(s, ttl) })
+	if !vv.secret(id, vault.FieldPassword, func(s string) { vv.a.clip.CopySecret(s, ttl) }) {
+		return
+	}
 	vv.say(i18n.Tf("Password copied. The clipboard will be cleared in %d seconds.", int(ttl.Seconds())))
 }
 

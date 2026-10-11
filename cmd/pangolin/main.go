@@ -25,8 +25,9 @@ func vaultDir() (string, error) {
 }
 
 func main() {
-	// Wipe every locked buffer on the way out, including on Ctrl+C.
-	memguard.CatchInterrupt()
+	// Wipe every locked buffer on the way out. ui.Run handles Ctrl+C and
+	// termination signals itself, so that it can lock and clear the
+	// clipboard first.
 	defer memguard.Purge()
 
 	dir, err := vaultDir()

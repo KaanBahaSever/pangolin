@@ -11,11 +11,13 @@ var tr = map[string]string{
 	"Create your vault":      "Kasanızı oluşturun",
 	"Welcome back":           "Tekrar hoş geldiniz",
 	"Choose a master password of at least %d characters.\nIt is never stored, so it cannot be recovered.": "En az %d karakterlik bir ana parola seçin.\nHiçbir yerde saklanmaz, bu yüzden kurtarılamaz.",
-	"Use at least %d characters.":                     "En az %d karakter kullanın.",
-	"The two passwords do not match.":                 "İki parola birbiriyle eşleşmiyor.",
-	"Creating vault…":                                 "Kasa oluşturuluyor…",
-	"Unlocking…":                                      "Kilit açılıyor…",
-	"Wrong master password, or the vault is damaged.": "Ana parola yanlış veya kasa hasarlı.",
+	"Use at least %d characters.":                      "En az %d karakter kullanın.",
+	"The two passwords do not match.":                  "İki parola birbiriyle eşleşmiyor.",
+	"Creating vault…":                                  "Kasa oluşturuluyor…",
+	"Unlocking…":                                       "Kilit açılıyor…",
+	"Wrong master password, or the vault is damaged.":  "Ana parola yanlış veya kasa hasarlı.",
+	"The vault's database file (vault.db) is missing.": "Kasanın veritabanı dosyası (vault.db) eksik.",
+	"The vault could not be opened: %s":                "Kasa açılamadı: %s",
 
 	// Vault
 	"Search":           "Ara",

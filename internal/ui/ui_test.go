@@ -190,6 +190,51 @@ func TestMainFlow(t *testing.T) {
 	a.lock()
 }
 
+// Switching the language while the vault unlocks rebuilds the screen; the
+// result must still arrive, on the new screen.
+func TestLanguageSwitchDuringUnlock(t *testing.T) {
+	fa := test.NewApp()
+	defer fa.Quit()
+	dir := t.TempDir()
+	v, err := vault.Create(dir, []byte(testPassword), testParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v.Close()
+	a := New(fa, dir, testParams)
+	a.setLanguage(i18n.English)
+
+	// Hold each result back until the language has been switched.
+	release := make(chan struct{})
+	a.afterDerive = func() { <-release }
+
+	a.gate.password.SetText("not the password!")
+	a.gate.submit()
+	a.setLanguage(i18n.Turkish) // while the derivation runs
+	if !a.gate.password.Disabled() {
+		t.Fatal("the rebuilt screen accepts input during the derivation")
+	}
+	release <- struct{}{}
+	settle(t, a)
+	if a.gate.status.Text != i18n.T("Wrong master password, or the vault is damaged.") {
+		t.Fatalf("status on the current screen = %q", a.gate.status.Text)
+	}
+	if a.gate.password.Disabled() {
+		t.Fatal("the form stayed disabled")
+	}
+
+	a.gate.password.SetText(testPassword)
+	a.gate.submit()
+	a.setLanguage(i18n.English)
+	release <- struct{}{}
+	settle(t, a)
+	if a.vault == nil {
+		t.Fatal("the vault did not unlock after a language switch")
+	}
+	a.lock()
+	i18n.Set(i18n.English)
+}
+
 func TestIdleLocks(t *testing.T) {
 	fa := test.NewApp()
 	defer fa.Quit()

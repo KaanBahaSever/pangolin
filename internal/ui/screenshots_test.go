@@ -58,7 +58,7 @@ func shoot(t *testing.T, dir string, lang i18n.Lang, mode string) {
 	fa.Preferences().SetString(prefLanguage, string(lang))
 	fa.Preferences().SetString(prefTheme, mode)
 	a := New(fa, t.TempDir(), testParams)
-	version.Version = "1.1.0"
+	version.Version = "1.3.0"
 
 	capture := func(name string) {
 		a.win.Resize(fyne.NewSize(980, 640))
