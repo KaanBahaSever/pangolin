@@ -51,8 +51,14 @@ jobs:
           sleep 2
 
           type_password() {
-            win=$(xdotool search --sync --name '^Pangolin$' | head -1)
-            xdotool windowfocus --sync "$win"
+            # Focus only once the window is mapped; earlier, X refuses.
+            for _ in $(seq 20); do
+              win=$(xdotool search --onlyvisible --name '^Pangolin$' 2>/dev/null | head -1)
+              if [ -n "$win" ] && xdotool windowfocus --sync "$win" 2>/dev/null; then
+                break
+              fi
+              sleep 0.5
+            done
             sleep 1
             for _ in $(seq "$1"); do
               xdotool type --delay 40 "$PASSWORD"
