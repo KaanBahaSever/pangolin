@@ -25,6 +25,10 @@ type ClipboardGuard struct {
 	owned bool
 	sum   [sha256.Size]byte
 	timer *time.Timer
+	// gen counts copies. A timer only clears the copy it was started for:
+	// one that already fired and is waiting to run must not cut short the
+	// delay of a newer secret.
+	gen uint64
 }
 
 // NewClipboardGuard returns a guard for cb. run is used for clipboard access
@@ -46,8 +50,20 @@ func (g *ClipboardGuard) CopySecret(value string, ttl time.Duration) {
 	// Only a hash is kept, to recognise the value later without storing it.
 	g.sum = sha256.Sum256([]byte(value))
 	g.owned = true
+	g.gen++
 	if ttl > 0 {
-		g.timer = time.AfterFunc(ttl, func() { g.run(g.Clear) })
+		gen := g.gen
+		g.timer = time.AfterFunc(ttl, func() { g.run(func() { g.expire(gen) }) })
+	}
+}
+
+// expire clears the clipboard for the copy numbered gen, if no newer copy
+// has been made since.
+func (g *ClipboardGuard) expire(gen uint64) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.gen == gen {
+		g.clear()
 	}
 }
 
@@ -57,6 +73,7 @@ func (g *ClipboardGuard) CopyPlain(value string) {
 	defer g.mu.Unlock()
 	g.stopTimer()
 	g.owned = false
+	g.gen++
 	g.cb.SetContent(value)
 }
 
@@ -65,6 +82,11 @@ func (g *ClipboardGuard) CopyPlain(value string) {
 func (g *ClipboardGuard) Clear() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.clear()
+}
+
+// clear is Clear for callers that hold g.mu.
+func (g *ClipboardGuard) clear() {
 	g.stopTimer()
 	if !g.owned {
 		return

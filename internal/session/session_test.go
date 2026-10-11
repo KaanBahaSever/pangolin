@@ -96,6 +96,25 @@ func TestClipboardNewSecretRestartsTimer(t *testing.T) {
 	eventually(t, "clipboard to clear", func() bool { return cb.Content() == "" })
 }
 
+// The UI queues the timer's work. A timer that fired just before the next
+// copy must not clear that newer secret early.
+func TestClipboardLateTimerSparesNewerSecret(t *testing.T) {
+	cb := &fakeClipboard{}
+	queue := make(chan func(), 4)
+	g := NewClipboardGuard(cb, func(f func()) { queue <- f })
+	g.CopySecret("first", 10*time.Millisecond)
+	late := <-queue // the first timer has fired; its work waits in the queue
+	g.CopySecret("second", time.Hour)
+	late()
+	if cb.Content() != "second" {
+		t.Fatalf("clipboard = %q; the first secret's timer cleared the second", cb.Content())
+	}
+	g.Clear()
+	if cb.Content() != "" {
+		t.Fatal("Clear did not clear the second secret")
+	}
+}
+
 func TestIdleTimerFires(t *testing.T) {
 	var fired atomic.Int32
 	it := NewIdleTimer(func() { fired.Add(1) })
