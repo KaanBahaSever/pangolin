@@ -1,0 +1,161 @@
+name: Smoke test
+
+# Installs a published release on clean machines and starts it, the way a
+# user would. Run it by hand after a release:
+#   Actions → Smoke test → Run workflow → tag (for example v1.3.0)
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to test, for example v1.3.0
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: amd64
+          - os: ubuntu-24.04
+            arch: amd64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PANGOLIN_HOME: ${{ github.workspace }}/vault
+      PASSWORD: smoke test password 2026
+    steps:
+      - name: Download and verify
+        run: |
+          gh release download "${{ inputs.tag }}" --repo "$GITHUB_REPOSITORY" \
+            --pattern "pangolin-linux-${{ matrix.arch }}.*" --pattern SHA256SUMS.txt
+          sha256sum --ignore-missing -c SHA256SUMS.txt
+      - name: Install the .deb with its dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y "./pangolin-linux-${{ matrix.arch }}.deb" \
+            xvfb xdotool imagemagick libgl1-mesa-dri
+          dpkg -s pangolin | grep -E '^(Version|Architecture)'
+          test -x /usr/bin/pangolin
+          test -f /usr/share/applications/pangolin.desktop
+      - name: Create a vault by typing, restart, unlock
+        run: |
+          Xvfb :99 -screen 0 1280x800x24 &
+          export DISPLAY=:99
+          sleep 2
+
+          type_password() {
+            win=$(xdotool search --sync --name '^Pangolin$' | head -1)
+            xdotool windowfocus --sync "$win"
+            sleep 1
+            for _ in $(seq "$1"); do
+              xdotool type --delay 40 "$PASSWORD"
+              xdotool key Return
+              sleep 0.5
+            done
+          }
+
+          pangolin & pid=$!
+          sleep 6
+          kill -0 "$pid"                  # still running
+          type_password 2                 # create: password and its repeat
+          sleep 4
+          import -window root created.png
+          test -f "$PANGOLIN_HOME/vault.header"
+          test -f "$PANGOLIN_HOME/vault.db"
+          kill "$pid"; wait "$pid" || true
+
+          pangolin & pid=$!
+          sleep 6
+          type_password 1                 # unlock
+          sleep 4
+          kill -0 "$pid"
+          import -window root unlocked.png
+          kill "$pid"; wait "$pid" || true
+      - name: Per-user install from the tarball
+        run: |
+          tar -xzf "pangolin-linux-${{ matrix.arch }}.tar.gz"
+          cd pangolin-*/
+          ./install.sh
+          test -x "$HOME/.local/bin/pangolin"
+          grep -q "Exec=$HOME/.local/bin/pangolin" "$HOME/.local/share/applications/pangolin.desktop"
+          ./install.sh --uninstall
+          test ! -e "$HOME/.local/bin/pangolin"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: linux-${{ matrix.os }}-${{ matrix.arch }}
+          path: "*.png"
+
+  macos:
+    runs-on: macos-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download and verify
+        run: |
+          gh release download "${{ inputs.tag }}" --repo "$GITHUB_REPOSITORY" \
+            --pattern pangolin-macos-universal.dmg --pattern SHA256SUMS.txt
+          shasum -a 256 --ignore-missing -c SHA256SUMS.txt
+      - name: Mount and inspect the app
+        run: |
+          hdiutil attach pangolin-macos-universal.dmg -nobrowse -mountpoint /tmp/pangolin
+          ls -la /tmp/pangolin
+          test -L /tmp/pangolin/Applications
+          cp -R /tmp/pangolin/Pangolin.app "$RUNNER_TEMP/"
+          hdiutil detach /tmp/pangolin
+          app="$RUNNER_TEMP/Pangolin.app"
+          plutil -lint "$app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist"
+          lipo -archs "$app/Contents/MacOS/pangolin" | tee archs.txt
+          grep -q x86_64 archs.txt && grep -q arm64 archs.txt
+          codesign --verify --deep --verbose=2 "$app"
+          test -f "$app/Contents/Resources/icon.icns"
+      - name: Start the Apple Silicon and the Intel build
+        run: |
+          app="$RUNNER_TEMP/Pangolin.app/Contents/MacOS/pangolin"
+          for arch in arm64 x86_64; do
+            if [ "$arch" = x86_64 ] && ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+              echo "Rosetta is not available; skipping the Intel build"
+              continue
+            fi
+            PANGOLIN_HOME="$RUNNER_TEMP/vault-$arch" arch -"$arch" "$app" & pid=$!
+            sleep 10
+            kill -0 "$pid"
+            screencapture -x "started-$arch.png" || true
+            kill "$pid"; wait "$pid" || true
+            echo "$arch build started and stayed up"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: macos
+          path: "*.png"
+          if-no-files-found: ignore
+
+  windows:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download, verify and start
+        shell: pwsh
+        run: |
+          gh release download "${{ inputs.tag }}" --repo "$env:GITHUB_REPOSITORY" `
+            --pattern pangolin-windows-amd64.zip --pattern SHA256SUMS.txt
+          $want = (Select-String -Path SHA256SUMS.txt -Pattern 'pangolin-windows-amd64.zip').Line.Split(' ')[0]
+          $got = (Get-FileHash pangolin-windows-amd64.zip -Algorithm SHA256).Hash.ToLower()
+          if ($want -ne $got) { throw "checksum mismatch" }
+          Expand-Archive pangolin-windows-amd64.zip -DestinationPath out
+          $env:PANGOLIN_HOME = "$env:RUNNER_TEMP\vault"
+          $p = Start-Process -FilePath out\Pangolin\Pangolin.exe -PassThru
+          Start-Sleep -Seconds 10
+          if ($p.HasExited) { throw "Pangolin exited with code $($p.ExitCode)" }
+          "Pangolin started and stayed up"
+          $p.Kill()
