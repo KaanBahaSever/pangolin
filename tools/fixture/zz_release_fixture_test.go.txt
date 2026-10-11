@@ -1,0 +1,30 @@
+package vault
+
+import (
+	"os"
+	"testing"
+)
+
+// Writes a vault with this release's code, for the compatibility test of
+// later releases. Kept in step with internal/vault/compat_test.go.
+func TestWriteReleaseFixture(t *testing.T) {
+	dir := os.Getenv("RELEASE_FIXTURE_DIR")
+	if dir == "" {
+		t.Skip()
+	}
+	os.RemoveAll(dir)
+	v, err := Create(dir, []byte("pangolin sürüm testi ğüşıöç"), testParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer v.Close()
+	for _, e := range []Entry{
+		{Title: "GitHub", Username: "octocat", URL: "github.com", Password: []byte("x9$kd-Lq2!vbn"), Notes: []byte("recovery codes")},
+		{Title: "İstanbul Kart", Username: "ışık", Password: []byte("çğıöşü-Parola")},
+		{Title: "Empty fields"},
+	} {
+		if _, err := v.Add(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

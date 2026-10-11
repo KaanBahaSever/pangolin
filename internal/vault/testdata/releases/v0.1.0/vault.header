@@ -1,0 +1,16 @@
+{
+  "format": "pangolin-vault",
+  "version": 1,
+  "kdf": {
+    "algorithm": "argon2id",
+    "time": 1,
+    "memory_kib": 8192,
+    "threads": 1,
+    "salt": "vCwZsOZfXYfR7SKetCL01Q=="
+  },
+  "wrap": {
+    "algorithm": "xchacha20-poly1305",
+    "nonce": "wvokMwX+sjgoUGzJWKAMnkw0o5Kv8Crb",
+    "ciphertext": "R8i/M6pRZqVLift5naknqtgoK2zmAu3LtIRz/18wyyV5OC7vnHO7RwQJT8JjDbME"
+  }
+}
