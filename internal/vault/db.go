@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	_ "github.com/mutecomm/go-sqlcipher/v4" // registers the "sqlite3" driver
 )
@@ -38,6 +39,9 @@ CREATE TABLE entries (
 // damaged (a truncated copy, a sync conflict) and must not be mistaken for a
 // vault with no entries.
 func openDB(path string, key []byte, create bool) (*sql.DB, error) {
+	if err := memorySecurityOff(); err != nil {
+		return nil, err
+	}
 	// The driver splits its connection string at the first "?". A "?" in the
 	// path would cut the key off and create an unencrypted database.
 	if strings.ContainsRune(path, '?') {
@@ -53,7 +57,6 @@ func openDB(path string, key []byte, create bool) (*sql.DB, error) {
 	db.SetMaxOpenConns(1)
 
 	for _, pragma := range []string{
-		"PRAGMA cipher_memory_security = ON",
 		"PRAGMA secure_delete = ON",
 		"PRAGMA temp_store = MEMORY",
 		"PRAGMA journal_mode = DELETE",
@@ -76,6 +79,37 @@ func openDB(path string, key []byte, create bool) (*sql.DB, error) {
 	// there is no reason to share it.
 	os.Chmod(path, 0o600)
 	return db, nil
+}
+
+var (
+	memoryOnce sync.Once
+	memoryErr  error
+)
+
+// memorySecurityOff turns SQLCipher's memory locking off, once per process
+// and before any vault is opened, because the setting is global and applies
+// to allocations made while a database is keyed.
+//
+// That feature locks every SQLite allocation into RAM. The operating system
+// allows a process to lock very little (about 44 pages on Windows by
+// default), and SQLCipher used up almost all of it. memguard then failed to
+// lock a key buffer, which is fatal: changing the master password could
+// crash the app. The keys matter more than SQLite's page cache, which holds
+// titles, usernames, URLs and sealed secrets only. SQLCipher still wipes its
+// own key material when a database closes. See architecture.md §7.1.
+func memorySecurityOff() error {
+	memoryOnce.Do(func() {
+		db, err := sql.Open("sqlite3", ":memory:")
+		if err != nil {
+			memoryErr = err
+			return
+		}
+		defer db.Close()
+		if _, err := db.Exec("PRAGMA cipher_memory_security = OFF"); err != nil {
+			memoryErr = fmt.Errorf("vault: cannot configure SQLCipher: %w", err)
+		}
+	})
+	return memoryErr
 }
 
 func migrate(db *sql.DB, create bool) error {

@@ -292,8 +292,9 @@ CREATE TABLE entries (
 ```
 
 `PRAGMA user_version` carries the schema version. Connection settings:
-`cipher_memory_security = ON`, `secure_delete = ON`, `temp_store = MEMORY`,
-`journal_mode = DELETE`, `foreign_keys = ON`.
+`secure_delete = ON`, `temp_store = MEMORY`, `journal_mode = DELETE`,
+`foreign_keys = ON`. SQLCipher's `cipher_memory_security` is turned off for
+the whole process before the first vault opens; §7.1 explains why.
 
 ### 6.3 Durability
 
@@ -325,8 +326,15 @@ both what is done and what is not.
   as soon as each derivation finishes, so repeated unlock attempts do not
   leave the process holding hundreds of megabytes.
 - Core dumps are disabled at start-up where the platform allows it.
+- SQLCipher's own memory locking (`cipher_memory_security`) is off. It locked
+  every SQLite allocation into RAM and used up the very small amount of memory
+  a process may lock (about 44 pages on Windows by default), after which
+  memguard could not lock a key buffer and the app crashed, for example while
+  changing the master password. The lockable memory is kept for the keys;
+  SQLite's page cache holds titles, usernames, URLs and sealed secrets only.
+  A test checks that key buffers can still be locked with a large vault open.
 - Locking destroys every key buffer, closes the database (SQLCipher wipes its
-  own key and page cache), clears the clipboard if Pangolin filled it, and
+  own key material), clears the clipboard if Pangolin filled it, and
   replaces the UI with the unlock screen. Unlocking again requires the master
   password and a full Argon2id derivation.
 

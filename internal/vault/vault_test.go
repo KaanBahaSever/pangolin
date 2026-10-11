@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/awnumar/memguard"
+
 	"github.com/KaanBahaSever/pangolin/internal/crypto"
 )
 
@@ -428,6 +430,37 @@ func TestPasswordUnicodeNormalisation(t *testing.T) {
 		t.Fatalf("legacy vault with a decomposed password: %v", err)
 	}
 	v.Close()
+}
+
+// SQLCipher's memory locking must be off: it used up the process's small
+// quota of lockable memory, and memguard then crashed the app when it could
+// not lock a key buffer (for example while changing the master password).
+func TestKeyBuffersStillLockableWithVaultOpen(t *testing.T) {
+	v, _ := newVault(t)
+	var mode int
+	if err := v.db.QueryRow("PRAGMA cipher_memory_security").Scan(&mode); err != nil {
+		t.Fatal(err)
+	}
+	if mode != 0 {
+		t.Fatalf("cipher_memory_security = %d, want 0", mode)
+	}
+	for i := 0; i < 200; i++ {
+		mustAdd(t, v, Entry{Title: "entry", Username: "user", Password: []byte("password"), Notes: []byte("notes")})
+	}
+	if _, err := v.List(""); err != nil {
+		t.Fatal(err)
+	}
+	// More key buffers at once than any operation needs; each locks a page.
+	var held []*memguard.LockedBuffer
+	for i := 0; i < 12; i++ {
+		held = append(held, memguard.NewBuffer(crypto.KeySize))
+	}
+	for _, b := range held {
+		b.Destroy()
+	}
+	if err := v.ChangePassword(testPass, []byte("another long password")); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestOpenWithMissingDatabase(t *testing.T) {
