@@ -125,9 +125,18 @@ jobs:
               echo "Rosetta is not available; skipping the Intel build"
               continue
             fi
-            PANGOLIN_HOME="$RUNNER_TEMP/vault-$arch" arch -"$arch" "$app" & pid=$!
+            PANGOLIN_HOME="$RUNNER_TEMP/vault-$arch" arch -"$arch" "$app" > "run-$arch.log" 2>&1 & pid=$!
             sleep 10
-            kill -0 "$pid"
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat "run-$arch.log"
+              # Hosted macOS runners are virtual machines without OpenGL.
+              # That is the runner, not Pangolin: report it and go on.
+              if grep -q "NSGL: Failed to find a suitable pixel format" "run-$arch.log"; then
+                echo "::warning::$arch: this runner has no OpenGL, so the window cannot open here; the build itself loaded and reached window creation"
+                continue
+              fi
+              exit 1
+            fi
             screencapture -x "started-$arch.png" || true
             kill "$pid"; wait "$pid" || true
             echo "$arch build started and stayed up"
