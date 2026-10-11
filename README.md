@@ -11,7 +11,8 @@
 <p align="center">
   <a href="https://kaanbahasever.github.io/pangolin/"><b>Website</b></a> ·
   <a href="https://github.com/KaanBahaSever/pangolin/releases/latest"><b>Download</b></a> ·
-  <a href="architecture.md"><b>Architecture</b></a>
+  <a href="architecture.md"><b>Architecture</b></a> ·
+  <a href="ROADMAP.md"><b>Roadmap</b></a>
 </p>
 
 <p align="center">

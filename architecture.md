@@ -193,8 +193,14 @@ parameter set of RFC 9106 (64 MiB, 3 passes), and far above the OWASP minimum.
 It costs a desktop a fraction of a second per unlock and an attacker 256 MiB
 per guess. The parameters are written into the vault header, so they can be
 raised later without breaking existing vaults. On load they are checked against
-hard bounds, so a manipulated header cannot cause an out-of-memory condition
-or a trivially weak derivation.
+hard bounds (at most 1 GiB, 16 passes, 16 lanes), so a manipulated header
+cannot request a trivially weak derivation, nor one that takes minutes or more
+memory than a desktop has.
+
+Before derivation the password is put in Unicode normalisation form C, so the
+same password gives the same key however the keyboard or the operating system
+composed letters such as "ş" or "é". Vaults made before 1.3 used the raw
+bytes; unlocking falls back to those when the normalised form fails.
 
 ### 5.3 Vault header
 
@@ -296,6 +302,12 @@ CREATE TABLE entries (
 - The header is replaced atomically: write to a temporary file, `fsync`,
   rename over the original.
 - Creating a vault fails if one already exists; nothing is overwritten.
+- Only creating a vault creates the database schema. Opening a vault whose
+  database is empty or has no schema (a truncated copy, a sync conflict)
+  fails instead of showing an empty vault that new entries would then
+  overwrite.
+- The vault folder's path may not contain "?", which the SQLite driver would
+  treat as the start of its options, cutting off the key.
 
 ---
 
@@ -360,7 +372,10 @@ One window, three states.
 it cannot be recovered. Minimum 12 characters.
 
 **Unlock.** One field. Enter unlocks. Errors do not say whether the password or
-the file was at fault.
+the file was at fault: a database that cannot be read after a successful key
+unwrap is reported like a wrong password. The only distinct message is for a
+missing `vault.db`, which anyone can see without a password. The language
+switch sits in the top-right corner.
 
 **Vault.** A fixed sidebar and a content area.
 
@@ -422,8 +437,10 @@ internal/ui/          Fyne screens and theme
 ```
 
 `internal/` keeps every package private to the application. Only `vault`
-imports the database driver, and only `crypto` touches primitives, so either
-can be replaced without changing its callers.
+imports the database driver, and only `crypto` uses encryption and key
+derivation, so either can be replaced without changing its callers. (The
+clipboard guard hashes what it copied, to recognise it later; that hash
+protects nothing and is not a key.)
 
 ---
 
@@ -459,5 +476,8 @@ Tests use reduced Argon2id parameters so the suite runs in seconds.
   the vault. Full key rotation is planned.
 - Excluding copied secrets from OS clipboard history needs platform-specific
   code and is planned.
-- Planned: encrypted export/import, TOTP, key-file second factor, signed
-  release builds.
+- Clipboard clearing on exit covers closing the window, Ctrl+C and SIGTERM.
+  If the operating system kills the process outright, the clipboard is left
+  as it was.
+
+What comes next is collected in [ROADMAP.md](ROADMAP.md).

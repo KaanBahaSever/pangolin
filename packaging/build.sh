@@ -103,7 +103,8 @@ Maintainer: The Pangolin contributors <noreply@github.com>
 Homepage: https://kaanbahasever.github.io/pangolin/
 Description: Local-first password keeper
  Pangolin keeps passwords in an encrypted vault on your own computer.
- No account, no server and no network access.
+ No account and no server; it goes online only when you ask it to
+ check for updates.
 EOF
   dpkg-deb --build --root-owner-group "$deb" "$dist/pangolin-linux-$arch.deb" >/dev/null
 }
