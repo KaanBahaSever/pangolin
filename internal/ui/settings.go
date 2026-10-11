@@ -208,7 +208,7 @@ func (a *App) changePassword(current, next []byte, done func()) {
 	progress := dialog.NewCustomWithoutButtons(title, widget.NewProgressBarInfinite(), a.win)
 	progress.Show()
 
-	go func() {
+	a.spawn(func() {
 		err := v.ChangePassword(current, next)
 		crypto.Wipe(current)
 		crypto.Wipe(next)
@@ -227,7 +227,7 @@ func (a *App) changePassword(current, next []byte, done func()) {
 				a.showInfo(title, i18n.T("The master password has been changed."))
 			}
 		})
-	}()
+	})
 }
 
 // updateRow is the "Updates" row of the About card. Pressing Check is the
@@ -245,8 +245,8 @@ func (a *App) updateRow() fyne.CanvasObject {
 		check.Disable()
 		status.SetText(i18n.T("Checking…"))
 		current := version.Version
-		go func() {
-			latest, err := update.Latest(context.Background(), update.LatestAPI, current)
+		a.spawn(func() {
+			latest, err := update.Latest(context.Background(), a.updateURL, current)
 			fyne.Do(func() {
 				check.Enable()
 				switch {
@@ -267,7 +267,7 @@ func (a *App) updateRow() fyne.CanvasObject {
 					status.SetText(i18n.T("You have the latest version."))
 				}
 			})
-		}()
+		})
 	})
 	actions.Add(check)
 

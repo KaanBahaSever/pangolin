@@ -134,6 +134,13 @@ func newVaultView(a *App) *vaultView {
 	return vv
 }
 
+// close stops the view's timers, before it is thrown away.
+func (vv *vaultView) close() {
+	if vv.statusTimer != nil {
+		vv.statusTimer.Stop()
+	}
+}
+
 // fail reports an error in a dialog.
 func (vv *vaultView) fail(err error) {
 	vv.a.showError(err)

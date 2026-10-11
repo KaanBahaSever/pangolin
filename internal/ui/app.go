@@ -18,6 +18,7 @@ import (
 	"github.com/KaanBahaSever/pangolin/internal/crypto"
 	"github.com/KaanBahaSever/pangolin/internal/i18n"
 	"github.com/KaanBahaSever/pangolin/internal/session"
+	"github.com/KaanBahaSever/pangolin/internal/update"
 	"github.com/KaanBahaSever/pangolin/internal/vault"
 )
 
@@ -60,6 +61,12 @@ type App struct {
 	// derivation has finished and before its result reaches the screen.
 	// Tests use it to act while a derivation is in flight.
 	afterDerive func()
+
+	// updateURL is where the update check asks. spawn runs slow work (the
+	// update check, changing the master password) in the background. Tests
+	// point the one at a local server and make the other synchronous.
+	updateURL string
+	spawn     func(func())
 }
 
 // Run starts Pangolin with the vault in dir and blocks until the window closes.
@@ -93,7 +100,10 @@ func Run(dir string) {
 // New builds the application on an existing Fyne app. params is used only
 // when a new vault is created.
 func New(fa fyne.App, dir string, params crypto.KDFParams) *App {
-	a := &App{fyne: fa, dir: dir, params: params}
+	a := &App{fyne: fa, dir: dir, params: params,
+		updateURL: update.LatestAPI,
+		spawn:     func(f func()) { go f() },
+	}
 	fa.Settings().SetTheme(newTheme(fa.Preferences().StringWithFallback(prefTheme, themeSystem)))
 	fa.SetIcon(logo)
 
@@ -138,6 +148,7 @@ func (a *App) setLanguage(l i18n.Lang) {
 	}
 	// Rebuild the vault screen in the new language, on the same page.
 	old := a.view
+	old.close()
 	a.view = newVaultView(a)
 	a.win.SetContent(a.view.content)
 	switch {
@@ -188,6 +199,7 @@ func (a *App) lock() {
 	a.clip.Clear()
 	a.vault.Close()
 	a.vault = nil
+	a.view.close()
 	a.view = nil
 
 	// Dialogs sit above the content and would survive SetContent.
